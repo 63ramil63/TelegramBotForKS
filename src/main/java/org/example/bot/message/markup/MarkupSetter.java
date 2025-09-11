@@ -12,18 +12,25 @@ public class MarkupSetter {
 
     public static HashMap<MarkupKey, InlineKeyboardMarkup> savedMarkup = new HashMap<>();
 
-    public boolean checkSavedMarkup(MarkupKey key) {
+    public InlineKeyboardMarkup getMarkup(MarkupKey key) {
+        if (!checkSavedMarkup(key)) {
+            setMarkup(key);
+        }
+        return savedMarkup.get(key);
+    }
+
+    private boolean checkSavedMarkup(MarkupKey key) {
         return savedMarkup.containsKey(key);
     }
 
-    public void setMarkup(MarkupKey key) {
+    private void setMarkup(MarkupKey key) {
         switch (key) {
             case MarkupKey.MainMenu -> savedMarkup.put(key, getMainMenuButtons());
             case MarkupKey.LessonMenu -> savedMarkup.put(key, getLessonMenuButtons());
         }
     }
 
-    public InlineKeyboardMarkup getLessonMenuButtons() {
+    private InlineKeyboardMarkup getLessonMenuButtons() {
 
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
 
@@ -45,7 +52,7 @@ public class MarkupSetter {
         return markup;
     }
 
-    public InlineKeyboardMarkup getMainMenuButtons() {
+    private InlineKeyboardMarkup getMainMenuButtons() {
         //создание кнопки и установка текста и возвращаемого значения при нажатии
         InlineKeyboardButton lessonButton = ButtonSetter.setButton("Расписание", "LessonButtonPressed");
         InlineKeyboardButton fileButton = ButtonSetter.setButton("Файлы", "FileButtonPressed");

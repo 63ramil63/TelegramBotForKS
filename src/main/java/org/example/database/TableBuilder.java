@@ -16,7 +16,7 @@ public class TableBuilder {
                 "FilePath nvarchar(100) null," +
                 "CanAddFolder tinyint default 0," +
                 "GroupId varchar(4) null," +
-                "primary key (Id))";
+                "primary key (ChatId))";
     }
 
     public void createTable() {

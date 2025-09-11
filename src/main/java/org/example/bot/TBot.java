@@ -1,9 +1,15 @@
 package org.example.bot;
 
 import org.example.Main;
+import org.example.bot.message.MessageBuilder;
+import org.example.bot.message.markup.MarkupKey;
+import org.example.bot.message.markup.MarkupSetter;
 import org.example.database.UserRepository;
+import org.example.files.FilesController;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -16,6 +22,7 @@ public class TBot extends TelegramLongPollingBot {
 
     private final ExecutorService executorService = new ThreadPoolExecutor(4, 10, 60L, TimeUnit.SECONDS, new LinkedBlockingDeque<>(100));
     private final UserRepository userRepository = new UserRepository();
+    private final MarkupSetter markupSetter = new MarkupSetter();
 
     private String bot_token;
     private String bot_name;
@@ -88,20 +95,37 @@ public class TBot extends TelegramLongPollingBot {
 
     private void sendNewMessageResponse(long chatId, String data) {
         switch (data) {
-            case "/start":
-
+            case "/start" -> {
+                System.out.println("case start");
+                MessageBuilder messageBuilder = new MessageBuilder("Добро пожаловать в бота", chatId);
+                try {
+                    SendMessage sendMessage = messageBuilder.getMessage();
+                    sendMessage.setReplyMarkup(markupSetter.getMarkup(MarkupKey.MainMenu));
+                    System.out.println("execute message");
+                    execute(sendMessage);
+                } catch (TelegramApiException e) {
+                    System.err.println("Error (TBotClass (method sendNewMessageResponse(case /start))) " + e);
+                }
+                return;
+            }
+        }
+        if (!FilesController.checkFileName(data)) {
+            return;
+        }
+        if (userRepository.getCanAddFolder(chatId)) {
+            FilesController filesController = new FilesController();
+            filesController.addFolder(data.trim());
         }
     }
 
+    // Если сообщение имеет только текст
     private void updateHasTextOnly(Update update) {
+
         long chatId = update.getMessage().getChatId();
         String data = update.getMessage().getText();
         checkAndAddUser(update);
 
-        boolean canAddFolder = userRepository.getCanAddFolder(chatId);
-        if (canAddFolder) {
-            sendNewMessageResponse(chatId, data);
-        }
+        sendNewMessageResponse(chatId, data);
     }
 
     @Override

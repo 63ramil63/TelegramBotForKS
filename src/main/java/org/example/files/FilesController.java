@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class FilesController {
@@ -78,5 +79,10 @@ public class FilesController {
         } catch (IOException e) {
             System.err.println("Error: FilesControllerClass (method addFolder()) " + e);
         }
+    }
+
+    public static boolean checkFileName(String str) {
+        // Допускаются: буквы (a-zA-Z), цифры (0-9), пробелы (\\s), нижние подчеркивания (_)
+        return str.matches(".*[^a-zA-Z0-9_\\s].*");
     }
 }

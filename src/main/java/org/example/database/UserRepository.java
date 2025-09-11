@@ -9,7 +9,7 @@ public class UserRepository {
     private static final Database dataBaseConnection = Database.getInstance();
     private static final String tableName = dataBaseConnection.tableName;
 
-    private static final String GET_USER = "SELECT Name FROM " +  tableName + " WHERE ChatId=?";
+    private static final String GET_USER = "SELECT UserName FROM " +  tableName + " WHERE ChatId=?";
     private static final String GET_FILE_PATH = "SELECT FilePath FROM " + tableName + " WHERE ChatId=?";
     private static final String GET_GROUP_ID = "SELECT GroupId FROM " + tableName + " WHERE ChatId=?";
     private static final String GET_CAN_ADD_FOLDER = "SELECT CanADDFolder FROM " + tableName + " WHERE ChatId=?";
@@ -68,6 +68,7 @@ public class UserRepository {
     public boolean getCanAddFolder(long chatId) {
         try (Connection connection = dataBaseConnection.getConnection();
             PreparedStatement preparedStatement = connection.prepareStatement(GET_CAN_ADD_FOLDER)) {
+            preparedStatement.setLong(1, chatId);
             ResultSet resultSet = preparedStatement.executeQuery();
             if (resultSet.next()) {
                 int result = resultSet.getInt("CanAddFolder");
@@ -100,7 +101,7 @@ public class UserRepository {
                 System.out.println("Execute update error");
             }
         } catch (SQLException e) {
-            System.out.println("Error (UserRepositoryClass (method executeSQLUpdate()))");
+            System.err.println("Error (UserRepositoryClass (method executeSQLUpdate()))");
         }
     }
 
