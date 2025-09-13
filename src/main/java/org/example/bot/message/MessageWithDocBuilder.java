@@ -6,16 +6,16 @@ import org.telegram.telegrambots.meta.api.objects.InputFile;
 
 import java.io.File;
 
-public class SendMessageWithDocBuilder {
+public class MessageWithDocBuilder {
     SendDocument sendDocument = new SendDocument();
 
-    public SendMessageWithDocBuilder(long chatId, String fileName) {
+    public MessageWithDocBuilder(long chatId, String fileName) {
         sendDocument.setChatId(chatId);
         String correctFileName = fileName.replaceAll("File$", "");
         sendDocument.setDocument(new InputFile(new File(TBot.path + correctFileName)));
     }
 
-    public SendDocument getSendDocument() {
+    public SendDocument getMessage() {
         return sendDocument;
     }
 }

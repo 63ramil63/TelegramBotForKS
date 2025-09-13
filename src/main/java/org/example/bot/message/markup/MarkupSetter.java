@@ -1,6 +1,7 @@
 package org.example.bot.message.markup;
 
 import org.example.bot.message.markup.button.ButtonSetter;
+import org.example.files.FilesController;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
@@ -10,23 +11,32 @@ import java.util.List;
 
 public class MarkupSetter {
 
-    public static HashMap<MarkupKey, InlineKeyboardMarkup> savedMarkup = new HashMap<>();
+    private FilesController filesController;
+    private String path;
 
-    public InlineKeyboardMarkup getMarkup(MarkupKey key) {
+    public MarkupSetter(FilesController filesController, String path) {
+        this.filesController = filesController;
+        this.path = path;
+    }
+
+    private HashMap<MarkupKey, InlineKeyboardMarkup> savedBasicMarkup = new HashMap<>();
+    private HashMap<String, InlineKeyboardMarkup> savedChangeableMarkup = new HashMap<>();
+
+    public InlineKeyboardMarkup getBasicMarkup(MarkupKey key) {
         if (!checkSavedMarkup(key)) {
             setMarkup(key);
         }
-        return savedMarkup.get(key);
+        return savedBasicMarkup.get(key);
     }
 
     private boolean checkSavedMarkup(MarkupKey key) {
-        return savedMarkup.containsKey(key);
+        return savedBasicMarkup.containsKey(key);
     }
 
     private void setMarkup(MarkupKey key) {
         switch (key) {
-            case MarkupKey.MainMenu -> savedMarkup.put(key, getMainMenuButtons());
-            case MarkupKey.LessonMenu -> savedMarkup.put(key, getLessonMenuButtons());
+            case MarkupKey.MainMenu -> savedBasicMarkup.put(key, getMainMenuButtons());
+            case MarkupKey.LessonMenu -> savedBasicMarkup.put(key, getLessonMenuButtons());
         }
     }
 
@@ -61,12 +71,22 @@ public class MarkupSetter {
         //добавляем ряд кнопок в клавиатуру
         keyboard.add(ButtonSetter.setRow(fileButton, lessonButton));
 
-        InlineKeyboardButton helpButton = ButtonSetter.setButton("Помощь", "/help");
+        InlineKeyboardButton helpButton = ButtonSetter.setButton("Помощь", "Help");
         keyboard.add(ButtonSetter.setRow(helpButton));
 
         //создание самого объекта клавиатуры, к которому все добавляем
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         markup.setKeyboard(keyboard);
         return markup;
+    }
+
+    public InlineKeyboardMarkup getChangeableMarkup(String key) {
+        if (key.contains("Folder")) {
+            key = key.replaceAll("Folder$", "");
+            return filesController.getFilesFromFolder(key);
+        } else if (key.equals("FileButtonPressed")) {
+            return filesController.getFilesFromFolder(path);
+        }
+        return null;
     }
 }

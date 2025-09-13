@@ -17,7 +17,7 @@ public class UserRepository {
     private static final String UPDATE_GROUP_ID = "UPDATE " + tableName + " SET GroupId=? WHERE ChatId=?";
     private static final String UPDATE_FILE_PATH = "UPDATE " + tableName + " SET FilePath=? WHERE ChatId=?";
     private static final String UPDATE_CAN_ADD_FOLDER = "UPDATE " + tableName + " SET CanAddFolder=? WHERE ChatId=?";
-    private static final String UPDATE_USER_NAME = "UPDATE " + tableName + "SET UserName=? WHERE ChatId=?";
+    private static final String UPDATE_USER_NAME = "UPDATE " + tableName + " SET UserName=? WHERE ChatId=?";
 
     // Метод для выполнения запросов с 1 переменной в запросе
     private String executeSQLQuery(String sql, long chatId) {
@@ -57,8 +57,8 @@ public class UserRepository {
         return false;
     }
 
-    public String getFilePath(long filePath) {
-        return executeSQLQuery(GET_FILE_PATH, filePath);
+    public String getFilePath(long chatId) {
+        return executeSQLQuery(GET_FILE_PATH, chatId);
     }
 
     public String getGroupId(long chatId) {
@@ -101,7 +101,7 @@ public class UserRepository {
                 System.out.println("Execute update error");
             }
         } catch (SQLException e) {
-            System.err.println("Error (UserRepositoryClass (method executeSQLUpdate()))");
+            System.err.println("Error (UserRepositoryClass (method executeSQLUpdate())) " + e);
         }
     }
 

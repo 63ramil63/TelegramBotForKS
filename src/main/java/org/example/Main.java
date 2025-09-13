@@ -20,10 +20,6 @@ public class Main {
         }
         TableBuilder tableBuilder = new TableBuilder();
         tableBuilder.createTable();
-        MarkupSetter markupSetter = new MarkupSetter();
-        markupSetter.getMarkup(MarkupKey.LessonMenu);
-        markupSetter.getMarkup(MarkupKey.MainMenu);
-        markupSetter = null;
         try {
             TelegramBotsApi tBot = new TelegramBotsApi(DefaultBotSession.class);
             tBot.registerBot(new TBot());
