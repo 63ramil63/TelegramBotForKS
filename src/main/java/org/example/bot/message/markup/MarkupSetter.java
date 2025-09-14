@@ -86,6 +86,8 @@ public class MarkupSetter {
             return filesController.getFilesFromFolder(key);
         } else if (key.equals("FileButtonPressed")) {
             return filesController.getFilesFromFolder(path);
+        } else if (key.contains("Group")) {
+
         }
         return null;
     }

@@ -135,7 +135,7 @@ public class TBot extends TelegramLongPollingBot {
         SendMessage sendMessage;
         switch (data) {
             case "/start" -> {
-                sendMessage = setSendMessage(chatId, "Добро пожаловать в бота", MarkupKey.MainMenu);
+                sendMessage = setSendMessage(chatId, "Выберите функцию", MarkupKey.MainMenu);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -187,6 +187,7 @@ public class TBot extends TelegramLongPollingBot {
             } catch (TelegramApiException e) {
                 System.err.println("Error (TBotClass (method sendNewMessageResponse())) " + e);
             }
+            sendNewMessageResponse(chatId, "/start");
         } else if (FilesController.checkFileName(data)) {
             if (userRepository.getCanAddFolder(chatId)) {
                 filesController.addFolder(data.trim());
@@ -223,7 +224,6 @@ public class TBot extends TelegramLongPollingBot {
             String extension = FilesController.checkFileExtension(fileName, allowedExtensions);
             Document document = update.getMessage().getDocument();
             String caption = update.getMessage().getCaption();
-            System.out.println("save document start");
             filesController.saveDocument(document, caption, extension, userPath);
             System.out.println("Сохранен документ от пользователя " + chatId + " / Документ: " + document.getFileName());
             sendNewMessageResponse(chatId, "Document saved");
@@ -280,8 +280,19 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(message);
                 } catch (TelegramApiException e) {
-                    System.err.println("Error (TBotClass (method sendEditMessage (Folder && FileButtonPressed))) " + e);
+                    System.err.println("Error (TBotClass (method sendEditMessage (FileButtonPressed))) " + e);
                 }
+            }
+            case "AddFolderButtonPressed" -> {
+                userRepository.updateCanAddFolder(chatId, (byte) 1);
+                message = setEditMessageWithoutMarkup(chatId, "Отправьте название папки", messageId);
+                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
+                try {
+                    execute(message);
+                } catch (TelegramApiException e) {
+                    System.err.println("Error (TBotClass (method sendEditMessage (AddFolderButtonPressed))) " + e);
+                }
+                return;
             }
         }
         if (data.contains("Folder")) {
@@ -295,7 +306,35 @@ public class TBot extends TelegramLongPollingBot {
             try {
                 execute(message);
             } catch (TelegramApiException e) {
-                System.err.println("Error (TBotClass (method sendEditMessage (Folder && FileButtonPressed))) " + e);
+                System.err.println("Error (TBotClass (method sendEditMessage (Folder))) " + e);
+            }
+        } else if (data.contains("Year")) {
+            message = setEditMessageWithoutMarkup(chatId, "Выберите вашу группу", messageId);
+
+            // Получаем index начала year
+            int index = data.indexOf("Year");
+            // Создаем строку к которой привяжем значение groupId
+            String num = data.substring(index);
+            num = num.replace("Year", "");
+            message.setReplyMarkup(markupSetter.getChangeableMarkup("Group" + num));
+            try {
+                execute(message);
+            } catch (TelegramApiException e) {
+                System.err.println("Error (TBotClass (method sendEditMessageResponse(Year)))");
+            }
+        } else if (data.contains("Group")) {
+            int index = data.indexOf("Group");
+            String group = data.substring(index);
+            group = group.replace("Group=", "");
+
+            userRepository.updateGroupId(chatId, group);
+
+            message = setEditMessageWithoutMarkup(chatId, "Группа сохранена", messageId);
+            message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
+            try {
+                execute(message);
+            } catch (TelegramApiException e) {
+                System.err.println("Error (TBotClass (method sendEditMessageResponse()))");
             }
         }
     }
@@ -315,6 +354,8 @@ public class TBot extends TelegramLongPollingBot {
         } else if (data.contains("File")) {
             deleteMessage(chatId, messageId);
             sendNewMessageResponse(chatId, data);
+        } else {
+            sendEditMessageResponse(chatId, data, messageId);
         }
     }
 

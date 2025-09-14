@@ -89,7 +89,7 @@ public class FilesController {
 
     public void addFolder(String text) {
         try {
-            if (Files.isDirectory(Path.of(TBot.path + text))) {
+            if (Files.isDirectory(Path.of(TBot.path))) {
                 Files.createDirectory(Path.of(TBot.path + text));
             }
         } catch (IOException e) {
