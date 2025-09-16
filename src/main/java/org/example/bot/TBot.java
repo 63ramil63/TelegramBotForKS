@@ -11,6 +11,7 @@ import org.example.database.UserRepository;
 import org.example.files.FilesController;
 import org.example.files.exception.FileSizeException;
 import org.example.files.exception.IncorrectExtensionException;
+import org.example.schedule.ScheduleCache;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
@@ -33,6 +34,7 @@ public class TBot extends TelegramLongPollingBot {
     private final UserRepository userRepository = new UserRepository();
     private MarkupSetter markupSetter;
     private FilesController filesController;
+    private ScheduleCache scheduleCache;
 
     private String bot_token;
     private String bot_name;
@@ -72,6 +74,11 @@ public class TBot extends TelegramLongPollingBot {
         }
         filesController = new FilesController(this, bot_token, delimiter, path);
         markupSetter = new MarkupSetter(filesController, path);
+        scheduleCache = new ScheduleCache(duration);
+        Runtime.getRuntime().addShutdownHook(new Thread(executorService::close));
+        try (ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1)) {
+            scheduler.scheduleAtFixedRate(scheduleCache::clearExpiredCache, duration, duration, TimeUnit.MINUTES);
+        }
     }
 
     private boolean checkUser(long chatId) {
@@ -214,8 +221,9 @@ public class TBot extends TelegramLongPollingBot {
 
         // Проверка выбранного пользователем пути
         String userPath = userRepository.getFilePath(chatId);
-        if (!userPath.equals("Not found")) {
+        if (userPath.equals("Not found")) {
             sendNewMessageResponse(chatId, "PathCheckError");
+            return;
         }
         userPath = path + userPath;
         String fileName = update.getMessage().getDocument().getFileName();
@@ -291,6 +299,48 @@ public class TBot extends TelegramLongPollingBot {
                     execute(message);
                 } catch (TelegramApiException e) {
                     System.err.println("Error (TBotClass (method sendEditMessage (AddFolderButtonPressed))) " + e);
+                }
+                return;
+            }
+            case "TodayScheduleButtonPressed" -> {
+                String groupId = userRepository.getGroupId(chatId);
+                if (groupId.equals("Not found")) {
+                    //todo
+                    return;
+                }
+                String scheduleToday = scheduleCache.getScheduleToday(groupId);
+                message = setEditMessageWithoutMarkup(chatId, scheduleToday, messageId);
+                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.LessonMenu));
+                try {
+                    execute(message);
+                } catch (TelegramApiException e) {
+                    System.err.println("Error (TBotClass (method sendEditMessage(TodaySchedule))) " + e);
+                }
+                return;
+            }
+            case "TomorrowScheduleButtonPressed" -> {
+                String groupId = userRepository.getGroupId(chatId);
+                if (groupId.equals("Not found")) {
+                    //todo
+                    return;
+                }
+                String scheduleTomorrow = scheduleCache.getScheduleTomorrow(groupId);
+                message = setEditMessageWithoutMarkup(chatId, scheduleTomorrow, messageId);
+                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.LessonMenu));
+                try {
+                    execute(message);
+                } catch (TelegramApiException e) {
+                    System.err.println("Error (TBotClass (method sendEditMessage(TodaySchedule))) " + e);
+                }
+                return;
+            }
+            case "SelectYearButtonPressed" -> {
+                message = setEditMessageWithoutMarkup(chatId, "Выберите курс", messageId);
+                message.setReplyMarkup(markupSetter.getChangeableMarkup("Year"));
+                try {
+                    execute(message);
+                } catch (TelegramApiException e) {
+                    System.err.println("Error (TBotClass (method sendEditMessageResponse(SelectYearButtonsPressed))) " + e);
                 }
                 return;
             }

@@ -1,8 +1,6 @@
 package org.example;
 
 import org.example.bot.TBot;
-import org.example.bot.message.markup.MarkupKey;
-import org.example.bot.message.markup.MarkupSetter;
 import org.example.database.TableBuilder;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;

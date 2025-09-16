@@ -24,7 +24,6 @@ public class WebSite {
                 }
                 i++;
             }
-            document.clearAttributes();
             document = null;
             return years;
         } catch (IOException e) {
@@ -54,7 +53,6 @@ public class WebSite {
             for (int i = 1; i < elementsSize.size() + 1; i++) {
                 getGroupsElement(elementsSize, groups, i);
             }
-            document.clearAttributes();
             document = null;
             return groups;
         } catch (IOException e) {

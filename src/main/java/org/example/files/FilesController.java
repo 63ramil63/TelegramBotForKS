@@ -123,17 +123,15 @@ public class FilesController {
 
         String fileId = document.getFileId();
         try {
-            System.out.println("try success");
             String filePath = tBot.getFilePath(fileId);
-            System.out.println("filepath");
             InputStream is = new URL("https://api.telegram.org/file/bot" + bot_token + "/" + filePath).openStream();
             System.out.println("is");
             if (caption != null && !caption.isEmpty()) {
                 Files.copy(is, Paths.get( userPath + delimiter + caption + "." + extension));
             } else {
                 Files.copy(is, Paths.get(userPath + delimiter + document.getFileName()));
-                System.out.println("copy");
             }
+            is.close();
         } catch (TelegramApiException e) {
             System.err.println("Error FilesControllerClass (method FilesController(TgAPIException)) " + e);
         } catch (IOException e) {
