@@ -147,6 +147,7 @@ public class TBot extends TelegramLongPollingBot {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
                     System.err.println("Error (TBotClass (method sendNewMessageResponse(case /start))) " + e);
+                    sendNewMessageResponse(chatId, "SimpleError");
                 }
                 return;
             }
@@ -156,6 +157,7 @@ public class TBot extends TelegramLongPollingBot {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
                     System.err.println("Error (TBotClass (method sendNewMessageResponse(case 'incorrect file extension'))) " + e);
+                    sendNewMessageResponse(chatId, "SimpleError");
                 }
                 return;
             }
@@ -165,6 +167,7 @@ public class TBot extends TelegramLongPollingBot {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
                     System.err.println("Error (TBotClass (method sendNewMessageResponse(case 'incorrect file extension'))) " + e);
+                    sendNewMessageResponse(chatId, "SimpleError");
                 }
                 return;
             }
@@ -174,11 +177,22 @@ public class TBot extends TelegramLongPollingBot {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
                     System.err.println("Error (TBotClass (method sendNewMessageResponse(case 'file too big'))) " + e);
+                    sendNewMessageResponse(chatId, "SimpleError");
                 }
                 return;
             }
             case "Folder added" -> {
                 sendMessage = setSendMessage(chatId, "Папка сохранена", MarkupKey.MainMenu);
+                try {
+                    execute(sendMessage);
+                } catch (TelegramApiException e) {
+                    sendNewMessageResponse(chatId, "SimpleError");
+                    System.err.println("Error (TBotClass (method sendNewMessageResponse(case 'file too big'))) " + e);
+                }
+                return;
+            }
+            case "SimpleError" -> {
+                sendMessage = setSendMessage(chatId, "Произошла неизвестная", MarkupKey.MainMenu);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -191,10 +205,11 @@ public class TBot extends TelegramLongPollingBot {
             MessageWithDocBuilder message = new MessageWithDocBuilder(chatId, data);
             try {
                 execute(message.getMessage());
+                sendNewMessageResponse(chatId, "/start");
             } catch (TelegramApiException e) {
                 System.err.println("Error (TBotClass (method sendNewMessageResponse())) " + e);
+                sendNewMessageResponse(chatId, "SimpleError");
             }
-            sendNewMessageResponse(chatId, "/start");
         } else if (FilesController.checkFileName(data)) {
             if (userRepository.getCanAddFolder(chatId)) {
                 filesController.addFolder(data.trim());
@@ -259,6 +274,7 @@ public class TBot extends TelegramLongPollingBot {
                     execute(message);
                 } catch (TelegramApiException e) {
                     System.err.println("Error (TBotClass (method sendEditMessageResponse(Help))) " + e);
+                    sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
                 return;
             }
@@ -269,6 +285,7 @@ public class TBot extends TelegramLongPollingBot {
                     execute(message);
                 } catch (TelegramApiException e) {
                     System.err.println("Error (TBotClass (method sendEditMessageResponse(LessonButtonPressed))) " + e);
+                    sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
                 return;
             }
@@ -279,6 +296,7 @@ public class TBot extends TelegramLongPollingBot {
                     execute(message);
                 } catch (TelegramApiException e) {
                     System.err.println("Error (TBotClass (method sendEditMessageResponse(BackButtonPressed))) " + e);
+                    sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
                 return;
             }
@@ -289,6 +307,7 @@ public class TBot extends TelegramLongPollingBot {
                     execute(message);
                 } catch (TelegramApiException e) {
                     System.err.println("Error (TBotClass (method sendEditMessage (FileButtonPressed))) " + e);
+                    sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
             }
             case "AddFolderButtonPressed" -> {
@@ -299,13 +318,14 @@ public class TBot extends TelegramLongPollingBot {
                     execute(message);
                 } catch (TelegramApiException e) {
                     System.err.println("Error (TBotClass (method sendEditMessage (AddFolderButtonPressed))) " + e);
+                    sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
                 return;
             }
             case "TodayScheduleButtonPressed" -> {
                 String groupId = userRepository.getGroupId(chatId);
                 if (groupId.equals("Not found")) {
-                    //todo
+                    sendEditMessageResponse(chatId, "GroupNotSelected", messageId);
                     return;
                 }
                 String scheduleToday = scheduleCache.getScheduleToday(groupId);
@@ -315,13 +335,14 @@ public class TBot extends TelegramLongPollingBot {
                     execute(message);
                 } catch (TelegramApiException e) {
                     System.err.println("Error (TBotClass (method sendEditMessage(TodaySchedule))) " + e);
+                    sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
                 return;
             }
             case "TomorrowScheduleButtonPressed" -> {
                 String groupId = userRepository.getGroupId(chatId);
                 if (groupId.equals("Not found")) {
-                    //todo
+                    sendEditMessageResponse(chatId, "GroupNotSelected", messageId);
                     return;
                 }
                 String scheduleTomorrow = scheduleCache.getScheduleTomorrow(groupId);
@@ -331,12 +352,35 @@ public class TBot extends TelegramLongPollingBot {
                     execute(message);
                 } catch (TelegramApiException e) {
                     System.err.println("Error (TBotClass (method sendEditMessage(TodaySchedule))) " + e);
+                    sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
                 return;
             }
             case "SelectYearButtonPressed" -> {
                 message = setEditMessageWithoutMarkup(chatId, "Выберите курс", messageId);
                 message.setReplyMarkup(markupSetter.getChangeableMarkup("Year"));
+                try {
+                    execute(message);
+                } catch (TelegramApiException e) {
+                    System.err.println("Error (TBotClass (method sendEditMessageResponse(SelectYearButtonsPressed))) " + e);
+                    sendEditMessageResponse(chatId, "SimpleError", messageId);
+                }
+                return;
+            }
+            case "GroupNotSelected" -> {
+                message = setEditMessageWithoutMarkup(chatId, "У вас не выбрана группа \n Выберите курс", messageId);
+                message.setReplyMarkup(markupSetter.getChangeableMarkup("Year"));
+                try {
+                    execute(message);
+                } catch (TelegramApiException e) {
+                    System.err.println("Error (TBotClass (method sendEditMessageResponse(SelectYearButtonsPressed))) " + e);
+                    sendEditMessageResponse(chatId, "SimpleError", messageId);
+                }
+                return;
+            }
+            case "SimpleError" -> {
+                message = setEditMessageWithoutMarkup(chatId, "Произошла неажиданная ошибка", messageId);
+                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
                 try {
                     execute(message);
                 } catch (TelegramApiException e) {
@@ -357,6 +401,7 @@ public class TBot extends TelegramLongPollingBot {
                 execute(message);
             } catch (TelegramApiException e) {
                 System.err.println("Error (TBotClass (method sendEditMessage (Folder))) " + e);
+                sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
         } else if (data.contains("Year")) {
             message = setEditMessageWithoutMarkup(chatId, "Выберите вашу группу", messageId);
@@ -371,6 +416,7 @@ public class TBot extends TelegramLongPollingBot {
                 execute(message);
             } catch (TelegramApiException e) {
                 System.err.println("Error (TBotClass (method sendEditMessageResponse(Year)))");
+                sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
         } else if (data.contains("Group")) {
             int index = data.indexOf("Group");
@@ -385,6 +431,7 @@ public class TBot extends TelegramLongPollingBot {
                 execute(message);
             } catch (TelegramApiException e) {
                 System.err.println("Error (TBotClass (method sendEditMessageResponse()))");
+                sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
         }
     }
@@ -395,6 +442,7 @@ public class TBot extends TelegramLongPollingBot {
             execute(message.getMessage());
         } catch (TelegramApiException e) {
             System.err.println("Error (TBotClass (method deleteMessage())) " + e);
+            sendEditMessageResponse(chatId, "SimpleError", messageId);
         }
     }
 
