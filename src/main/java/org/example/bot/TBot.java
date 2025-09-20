@@ -72,7 +72,7 @@ public class TBot extends TelegramLongPollingBot {
         } catch (IOException e) {
             System.err.println("Error (TBotClass (method loadConfig())) " + e);
         }
-        filesController = new FilesController(this, bot_token, delimiter, path);
+        filesController = new FilesController(this, bot_token, delimiter, path, maxFileSize);
         markupSetter = new MarkupSetter(filesController, path);
         scheduleCache = new ScheduleCache(duration);
         Runtime.getRuntime().addShutdownHook(new Thread(executorService::close));

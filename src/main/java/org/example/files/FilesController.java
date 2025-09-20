@@ -24,28 +24,29 @@ public class FilesController {
     private final String bot_token;
     private final String delimiter;
     private final String path;
+    private final long maxFileSize;
 
-    public FilesController(TBot tBot, String bot_token, String delimiter, String path) {
+    public FilesController(TBot tBot, String bot_token, String delimiter, String path, long maxFileSize) {
         this.tBot = tBot;
         this.bot_token = bot_token;
         this.delimiter = delimiter;
         this.path = path;
+        this.maxFileSize = maxFileSize;
     }
 
 
     private List<InlineKeyboardButton> setRow(Path path) {
 
-        System.out.println(path );
         List<InlineKeyboardButton> row = new ArrayList<>();
 
         // Удаление пути из названия файла
-        String fileName = path.toString().replace(TBot.path, "");
+        String fileName = path.toString().replace(this.path, "");
         InlineKeyboardButton button;
 
         if (!Files.isDirectory(path)) {
             // Удаление лишней \
-            int index = fileName.indexOf(TBot.delimiter);
-            String buttonName = fileName.substring(index).replace(TBot.delimiter, "");
+            int index = fileName.indexOf(this.delimiter);
+            String buttonName = fileName.substring(index).replace(this.delimiter, "");
             button = ButtonSetter.setButton(buttonName, fileName + "File");
             row.add(button);
         } else {
@@ -55,23 +56,31 @@ public class FilesController {
         return row;
     }
 
-    public InlineKeyboardMarkup getFilesFromFolder(String path) {
+    public InlineKeyboardMarkup getFilesFromFolder(String rawPath) {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        System.out.println(path);
-        if (!path.equals(TBot.path)) {
-            path = TBot.path + path;
+        if (!rawPath.equals(this.path)) {
+            rawPath = this.path + rawPath;
         }
-        System.out.println("before try");
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(path))) {
-            System.out.println("try success");
+
+        Path normalizedPath = Path.of(rawPath);
+
+        if (!Files.exists(normalizedPath)) {
+            try {
+                Files.createDirectory(normalizedPath);
+            } catch (IOException e) {
+                System.err.println("Error (FilesControllerClass (method getFilesFromFolder()))");
+            }
+        }
+
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(normalizedPath)) {
             for (Path _path: stream) {
                 keyboard.add(setRow(_path));
             }
 
             InlineKeyboardButton back = ButtonSetter.setButton("Назад", "BackButtonPressed");
             // Добавление различных кнопок
-            if (path.equals(TBot.path)) {
+            if (normalizedPath.equals(Path.of(this.path))) {
                 InlineKeyboardButton addFolder = ButtonSetter.setButton("Добавить папку", "AddFolderButtonPressed");
                 // Установка кнопки назад и добавить папку
                 keyboard.add(ButtonSetter.setRow(addFolder, back));
@@ -83,14 +92,13 @@ public class FilesController {
         } catch (IOException e) {
             System.err.println("Error: FilesControllerClass (method getFilesFromFolder()) " + e);
         }
-        System.out.println("return markup");
         return markup;
     }
 
     public void addFolder(String text) {
         try {
-            if (Files.isDirectory(Path.of(TBot.path))) {
-                Files.createDirectory(Path.of(TBot.path + text));
+            if (Files.isDirectory(Path.of(this.path))) {
+                Files.createDirectory(Path.of(this.path + text));
             }
         } catch (IOException e) {
             System.err.println("Error: FilesControllerClass (method addFolder()) " + e);
@@ -113,7 +121,7 @@ public class FilesController {
     }
 
     private boolean checkMaxSize(Document document) {
-        return document.getFileSize() > (long) TBot.maxFileSize * 1024 * 1024;
+        return document.getFileSize() > maxFileSize * 1024 * 1024;
     }
 
     public void saveDocument(Document document, String caption, String extension, String userPath) throws FileSizeException {
@@ -125,7 +133,6 @@ public class FilesController {
         try {
             String filePath = tBot.getFilePath(fileId);
             InputStream is = new URL("https://api.telegram.org/file/bot" + bot_token + "/" + filePath).openStream();
-            System.out.println("is");
             if (caption != null && !caption.isEmpty()) {
                 Files.copy(is, Paths.get( userPath + delimiter + caption + "." + extension));
             } else {
