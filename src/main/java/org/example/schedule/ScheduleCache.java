@@ -26,16 +26,17 @@ public class ScheduleCache {
     }
 
     private void parseSchedule(String groupId) {
+        System.out.println("Parse schedule for groupId: " + groupId);
         String today = formatDate(true);
         String tomorrow = formatDate(false);
         WebSite webSite = new WebSite();
         String scheduleToday = webSite.getSchedule(today, groupId);
         String scheduleTomorrow = webSite.getSchedule(tomorrow, groupId);
-        cachedSchedule.put(groupId, new CachedSchedule(scheduleToday, scheduleTomorrow, cacheDuration));
+        putSchedule(groupId, scheduleToday, scheduleTomorrow);
     }
 
     public synchronized String getScheduleToday(String groupId) {
-        if (cachedSchedule.get(groupId).isExpired()) {
+        if (!cachedSchedule.containsKey(groupId) ||cachedSchedule.get(groupId).isExpired()) {
             clearExpiredCache();
             parseSchedule(groupId);
         }
@@ -43,7 +44,7 @@ public class ScheduleCache {
     }
 
     public synchronized String getScheduleTomorrow(String groupId) {
-        if (cachedSchedule.get(groupId).isExpired()) {
+        if (!cachedSchedule.containsKey(groupId) || cachedSchedule.get(groupId).isExpired()) {
             clearExpiredCache();
             parseSchedule(groupId);
         }

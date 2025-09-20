@@ -458,7 +458,6 @@ public class TBot extends TelegramLongPollingBot {
     }
 
     private void updateHasCallbackQuery(Update update) {
-
         //getCallBackQuery дает те же возможности, что и message, но получить message можно только из CallBackQuery.getMessage
         long chatId = update.getCallbackQuery().getMessage().getChatId();
         checkAndAddUser(update);
