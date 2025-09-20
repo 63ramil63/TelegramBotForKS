@@ -71,11 +71,16 @@ public class WebSite {
         return week;
     }
 
+    private String getNormalizedSchedule(Elements schedule) {
+        return schedule.text().replace("Кабинет:", "\nКабинет:").replace("дистанционно", "(дистант)");
+    }
+
     private String getScheduleInfo(int num, Document document) {
-        Elements _number = document.select("body > table:nth-child(5) > tbody > tr:nth-child(" + num + ") > td:nth-child(1)");
-        Elements _time = document.select("body > table:nth-child(5) > tbody > tr:nth-child(" + num + ") > td:nth-child(2)");
-        Elements _lesson = document.select("body > table:nth-child(5) > tbody > tr:nth-child(" + num + ") > td:nth-child(4)");
-        return _number.text() + ") " + _time.text() + " " + _lesson.text();
+        Elements number = document.select("body > table:nth-child(5) > tbody > tr:nth-child(" + num + ") > td:nth-child(1)");
+        Elements time = document.select("body > table:nth-child(5) > tbody > tr:nth-child(" + num + ") > td:nth-child(2)");
+        Elements rawSchedule = document.select("body > table:nth-child(5) > tbody > tr:nth-child(" + num + ") > td:nth-child(4)");
+        String normalizedSchedule = getNormalizedSchedule(rawSchedule);
+        return number.text() + ") " + time.text() + "\n" + normalizedSchedule;
     }
 
     private String parseSchedule(int num, Document document) {
@@ -96,7 +101,7 @@ public class WebSite {
         String schedules = schedule.toString();
         //удаление всех пробелов в конце строки, убираем лишний '(', убираем наименование места
         schedules = schedules.replaceAll("\\s+$", "");
-        schedules = schedules.substring(0, schedules.length() - 1);
+
         schedules = schedules.replaceAll("Московское шоссе, 120", "");
         schedules = schedules.replaceAll(" Замена Свободное время на:", "");
         System.out.println(schedules);

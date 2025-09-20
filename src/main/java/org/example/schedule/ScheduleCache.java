@@ -26,7 +26,6 @@ public class ScheduleCache {
     }
 
     private void parseSchedule(String groupId) {
-        System.out.println("Parse schedule for groupId: " + groupId);
         String today = formatDate(true);
         String tomorrow = formatDate(false);
         WebSite webSite = new WebSite();
@@ -57,7 +56,6 @@ public class ScheduleCache {
 
     public void clearExpiredCache() {
         cachedSchedule.entrySet().removeIf(entry -> entry.getValue().isExpired());
-        System.out.println("Cleared cachedSchedule");
     }
 
     private static class CachedSchedule {
