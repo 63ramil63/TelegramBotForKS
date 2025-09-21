@@ -80,7 +80,7 @@ public class WebSite {
         Elements time = document.select("body > table:nth-child(5) > tbody > tr:nth-child(" + num + ") > td:nth-child(2)");
         Elements rawSchedule = document.select("body > table:nth-child(5) > tbody > tr:nth-child(" + num + ") > td:nth-child(4)");
         String normalizedSchedule = getNormalizedSchedule(rawSchedule);
-        return number.text() + ") " + time.text() + "\n" + normalizedSchedule;
+        return "\n" + number.text() + ") " + time.text() + "\n" + normalizedSchedule;
     }
 
     private String parseSchedule(int num, Document document) {

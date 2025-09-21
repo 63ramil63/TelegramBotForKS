@@ -334,8 +334,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(message);
                 } catch (TelegramApiException e) {
-                    System.err.println("Error (TBotClass (method sendEditMessage(TodaySchedule))) " + e);
-                    sendEditMessageResponse(chatId, "SimpleError", messageId);
+                    System.err.println("The new text equals with old: Error (TBotClass (method sendEditMessage(TodaySchedule))) " + e);
                 }
                 return;
             }
@@ -351,8 +350,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(message);
                 } catch (TelegramApiException e) {
-                    System.err.println("Error (TBotClass (method sendEditMessage(TodaySchedule))) " + e);
-                    sendEditMessageResponse(chatId, "SimpleError", messageId);
+                    System.err.println("The new text equals with old: Error (TBotClass (method sendEditMessage(TomorrowSchedule))) " + e);
                 }
                 return;
             }
