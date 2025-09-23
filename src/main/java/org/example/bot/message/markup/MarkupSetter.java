@@ -54,6 +54,11 @@ public class MarkupSetter {
         //кнопка для выбора курса
         keyboard.add(ButtonSetter.setRow(selectYear));
 
+        InlineKeyboardButton siteButton = new InlineKeyboardButton();
+        siteButton.setText("На сайт колледжа");
+        siteButton.setUrl("https://lk.ks.psuti.ru/");
+        keyboard.add(ButtonSetter.setRow(siteButton));
+
         //кнопка для возвращения в глав меню
         InlineKeyboardButton back = ButtonSetter.setButton("Назад", "BackButtonPressed");
         keyboard.add(ButtonSetter.setRow(back));
