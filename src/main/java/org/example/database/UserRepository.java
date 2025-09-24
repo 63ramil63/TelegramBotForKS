@@ -4,6 +4,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class UserRepository {
     private static final Database dataBaseConnection = Database.getInstance();
@@ -18,6 +20,7 @@ public class UserRepository {
     private static final String UPDATE_FILE_PATH = "UPDATE " + tableName + " SET FilePath=? WHERE ChatId=?";
     private static final String UPDATE_CAN_ADD_FOLDER = "UPDATE " + tableName + " SET CanAddFolder=? WHERE ChatId=?";
     private static final String UPDATE_USER_NAME = "UPDATE " + tableName + " SET UserName=? WHERE ChatId=?";
+    private static final String GET_ALL_CHAT_ID = "SELECT ChatId FROM " + tableName;
 
     // Метод для выполнения запросов с 1 переменной в запросе
     private String executeSQLQuery(String sql, long chatId) {
@@ -82,6 +85,20 @@ public class UserRepository {
             System.err.println("Error (UserRepositoryClass (method getCanAddFolder))" + e);
         }
         return false;
+    }
+
+    public List<Long> getAllUsersChatId() {
+        List<Long> chatIdArray = new ArrayList<>();
+        try (Connection connection = dataBaseConnection.getConnection();
+            PreparedStatement preparedStatement = connection.prepareStatement(GET_ALL_CHAT_ID)) {
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                chatIdArray.add(resultSet.getLong("ChatId"));
+            }
+        } catch (SQLException e) {
+            System.err.println("Error (UserRepositoryClass (method getAllUsersChatId))");
+        }
+        return chatIdArray;
     }
 
     private void executeSQLUpdate(String sql, Object ... params) {

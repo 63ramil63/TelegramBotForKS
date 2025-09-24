@@ -45,7 +45,7 @@ public class TBot extends TelegramLongPollingBot {
     public static String delimiter;
 
     private final String helpResponse = "Напишите /start, если что-то сломалось \n" +
-            "Чтобы сохранить файл, выберите путь и скиньте файл боту" +
+            "Чтобы сохранить файл, выберите путь и скиньте файл боту\n" +
             "Старайтесь не делать названия файлов и директории слишком большими, бот может дать сбой \n" +
             "Если столкнулись с проблемой, напишите в личку @wrotoftanks63";
 
@@ -201,7 +201,25 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
         }
-        if (data.contains("File")) {
+        if (data.contains("/sendToAll")) {
+            String text = data.replaceAll("/sendToAll", "");
+            if (!text.isEmpty()) {
+                List<Long> chatIdArray = userRepository.getAllUsersChatId();
+                if (!chatIdArray.isEmpty()) {
+                    for (long id : chatIdArray) {
+                        sendMessage = new SendMessage();
+                        sendMessage.setChatId(id);
+                        sendMessage.setText(text);
+                        try {
+                            execute(sendMessage);
+                            sendNewMessageResponse(id, "/start");
+                        } catch (TelegramApiException e) {
+                            System.err.println("Error (TBotClass (method sendNewMessageResponse(/sendToAll)))");
+                        }
+                    }
+                }
+            }
+        } else if (data.contains("File")) {
             MessageWithDocBuilder message = new MessageWithDocBuilder(chatId, data);
             try {
                 execute(message.getMessage());
