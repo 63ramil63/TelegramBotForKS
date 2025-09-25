@@ -43,6 +43,7 @@ public class TBot extends TelegramLongPollingBot {
     public static String path;
     public static int maxFileSize;
     public static String delimiter;
+    private static List<String> adminsUserName;
 
     private final String helpResponse = "Напишите /start, если что-то сломалось \n" +
             "Чтобы сохранить файл, выберите путь и скиньте файл боту\n" +
@@ -69,6 +70,7 @@ public class TBot extends TelegramLongPollingBot {
             allowedExtensions = List.of(properties.getProperty("extensions").split(","));
             //макс размер файла в мб
             maxFileSize = Integer.parseInt(properties.getProperty("fileMaxSize"));
+            adminsUserName = List.of(properties.getProperty("admins").split(","));
         } catch (IOException e) {
             System.err.println("Error (TBotClass (method loadConfig())) " + e);
         }
@@ -192,7 +194,16 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "SimpleError" -> {
-                sendMessage = setSendMessage(chatId, "Произошла неизвестная", MarkupKey.MainMenu);
+                sendMessage = setSendMessage(chatId, "Произошла неизвестная ошибка", MarkupKey.MainMenu);
+                try {
+                    execute(sendMessage);
+                } catch (TelegramApiException e) {
+                    System.err.println("Error (TBotClass (method sendNewMessageResponse(case 'file too big'))) " + e);
+                }
+                return;
+            }
+            case "AdminError" -> {
+                sendMessage = setSendMessage(chatId, "У вас нет прав на использование команды", MarkupKey.MainMenu);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -203,6 +214,10 @@ public class TBot extends TelegramLongPollingBot {
         }
         if (data.contains("/sendToAll")) {
             String text = data.replaceAll("/sendToAll", "");
+            if (!adminsUserName.contains(userRepository.getUserName(chatId))) {
+                sendNewMessageResponse(chatId, "AdminError");
+                return;
+            }
             if (!text.isEmpty()) {
                 List<Long> chatIdArray = userRepository.getAllUsersChatId();
                 if (!chatIdArray.isEmpty()) {
@@ -291,8 +306,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(message);
                 } catch (TelegramApiException e) {
-                    System.err.println("Error (TBotClass (method sendEditMessageResponse(Help))) " + e);
-                    sendEditMessageResponse(chatId, "SimpleError", messageId);
+                    System.err.println("The new text equals with old: Error (TBotClass (method sendEditMessageResponse(Help))) " + e);
                 }
                 return;
             }
@@ -395,7 +409,7 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "SimpleError" -> {
-                message = setEditMessageWithoutMarkup(chatId, "Произошла неажиданная ошибка", messageId);
+                message = setEditMessageWithoutMarkup(chatId, "Произошла неожиданная ошибка", messageId);
                 message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
                 try {
                     execute(message);

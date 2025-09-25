@@ -60,6 +60,20 @@ public class UserRepository {
         return false;
     }
 
+    public String getUserName(long chatId) {
+        try (Connection connection = dataBaseConnection.getConnection();
+            PreparedStatement preparedStatement = connection.prepareStatement(GET_USER)) {
+            preparedStatement.setLong(1, chatId);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getNString("UserName");
+            }
+        } catch (SQLException e) {
+            System.err.println("Error (UserRepositoryClass (method getUserName))");
+        }
+        return "";
+    }
+
     public String getFilePath(long chatId) {
         return executeSQLQuery(GET_FILE_PATH, chatId);
     }
