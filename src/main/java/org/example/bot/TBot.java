@@ -14,7 +14,6 @@ import org.example.files.exception.IncorrectExtensionException;
 import org.example.schedule.ScheduleCache;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
-import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.Document;
@@ -49,6 +48,8 @@ public class TBot extends TelegramLongPollingBot {
             "Чтобы сохранить файл, выберите путь и скиньте файл боту\n" +
             "Старайтесь не делать названия файлов и директории слишком большими, бот может дать сбой \n" +
             "Если столкнулись с проблемой, напишите в личку @wrotoftanks63";
+
+    private StringBuilder notification = new StringBuilder("Нет каких либо оповещений");
 
     public TBot() {
         loadConfig();
@@ -234,6 +235,17 @@ public class TBot extends TelegramLongPollingBot {
                     }
                 }
             }
+        } else if (data.contains("/sendNotification")) {
+            String text = data.replaceAll("/sendNotification", "");
+            if (!adminsUserName.contains(userRepository.getUserName(chatId))) {
+                sendNewMessageResponse(chatId, "AdminError");
+                return;
+            }
+            if (!text.isEmpty()) {
+                notification.setLength(0);
+                notification.append(text);
+                sendNewMessageResponse(chatId, "/start");
+            }
         } else if (data.contains("File")) {
             MessageWithDocBuilder message = new MessageWithDocBuilder(chatId, data);
             try {
@@ -394,6 +406,16 @@ public class TBot extends TelegramLongPollingBot {
                 } catch (TelegramApiException e) {
                     System.err.println("Error (TBotClass (method sendEditMessageResponse(SelectYearButtonsPressed))) " + e);
                     sendEditMessageResponse(chatId, "SimpleError", messageId);
+                }
+                return;
+            }
+            case "GetNotification" -> {
+                message = setEditMessageWithoutMarkup(chatId, notification.toString(), messageId);
+                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
+                try {
+                    execute(message);
+                } catch (TelegramApiException e) {
+                    System.err.println("The new text equals with old: Error (TBotClass (method sendEditMessageResponse(GetNotification))) " + e);
                 }
                 return;
             }

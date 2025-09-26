@@ -77,6 +77,9 @@ public class MarkupSetter {
         //добавляем ряд кнопок в клавиатуру
         keyboard.add(ButtonSetter.setRow(fileButton, lessonButton));
 
+        InlineKeyboardButton notificationButton = ButtonSetter.setButton("Объявления", "GetNotification");
+        keyboard.add(ButtonSetter.setRow(notificationButton));
+
         InlineKeyboardButton helpButton = ButtonSetter.setButton("Помощь", "Help");
         keyboard.add(ButtonSetter.setRow(helpButton));
 
