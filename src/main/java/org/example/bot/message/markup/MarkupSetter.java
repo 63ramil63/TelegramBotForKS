@@ -9,19 +9,20 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class MarkupSetter {
 
-    private FilesController filesController;
-    private String path;
+    private final FilesController filesController;
+    private final String path;
 
     public MarkupSetter(FilesController filesController, String path) {
         this.filesController = filesController;
         this.path = path;
     }
 
-    private final HashMap<MarkupKey, InlineKeyboardMarkup> savedBasicMarkup = new HashMap<>();
-    private final HashMap<String, InlineKeyboardMarkup> savedChangeableMarkup = new HashMap<>();
+    private final ConcurrentHashMap<MarkupKey, InlineKeyboardMarkup> savedBasicMarkup = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, InlineKeyboardMarkup> savedChangeableMarkup = new ConcurrentHashMap<>();
 
     public InlineKeyboardMarkup getBasicMarkup(MarkupKey key) {
         if (!checkSavedMarkup(key)) {

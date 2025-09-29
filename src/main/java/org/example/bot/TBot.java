@@ -32,7 +32,8 @@ import java.util.concurrent.*;
 public class TBot extends TelegramLongPollingBot {
 
     private final ExecutorService executorService = new ThreadPoolExecutor(4, 10, 60L, TimeUnit.SECONDS, new LinkedBlockingDeque<>(100));
-    private final UserRepository userRepository = new UserRepository();
+    private UserRepository userRepository;
+    private FileTrackerRepository fileTrackerRepository;
     private MarkupSetter markupSetter;
     private FilesController filesController;
     private ScheduleCache scheduleCache;
@@ -80,6 +81,8 @@ public class TBot extends TelegramLongPollingBot {
         filesController = new FilesController(this, bot_token, delimiter, path, maxFileSize);
         markupSetter = new MarkupSetter(filesController, path);
         scheduleCache = new ScheduleCache(duration);
+        fileTrackerRepository = new FileTrackerRepository();
+        userRepository = new UserRepository();
         Runtime.getRuntime().addShutdownHook(new Thread(executorService::close));
         try (ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1)) {
             scheduler.scheduleAtFixedRate(scheduleCache::clearExpiredCache, duration, duration, TimeUnit.MINUTES);
@@ -252,7 +255,6 @@ public class TBot extends TelegramLongPollingBot {
             MessageWithDocBuilder message = new MessageWithDocBuilder(chatId, data);
             SendDocument sendDocument = message.getMessage();
             if (adminsUserName.contains(userRepository.getUserName(chatId))) {
-                FileTrackerRepository fileTrackerRepository = new FileTrackerRepository();
                 long userId = fileTrackerRepository.getFileInfo(data.replaceAll("File$", ""));
                 String username = userRepository.getUserName(userId);
                 sendDocument.setCaption("Данный файл отправлен пользователем: " +
@@ -299,8 +301,6 @@ public class TBot extends TelegramLongPollingBot {
         userPath = path + userPath;
         String fileName = update.getMessage().getDocument().getFileName();
         try {
-            FileTrackerRepository fileTrackerRepository = new FileTrackerRepository();
-
             // Получение расширения, документа и описания к нему
             String extension = FilesController.checkFileExtension(fileName, allowedExtensions);
             Document document = update.getMessage().getDocument();

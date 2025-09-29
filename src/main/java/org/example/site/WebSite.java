@@ -24,7 +24,6 @@ public class WebSite {
                 }
                 i++;
             }
-            document = null;
             return years;
         } catch (IOException e) {
             System.err.println("Error: WebSiteClass (method getYear()) " + e);
@@ -53,7 +52,6 @@ public class WebSite {
             for (int i = 1; i < elementsSize.size() + 1; i++) {
                 getGroupsElement(elementsSize, groups, i);
             }
-            document = null;
             return groups;
         } catch (IOException e) {
             System.err.println("Error WebSiteClass (method getGroups()) " + e);
@@ -135,7 +133,6 @@ public class WebSite {
             String schedule = findCurrentDay(day, document);
             System.out.println("Parsed schedule for group " + groupId);
             if (!schedule.equals("Not found")) {
-                document.clearAttributes();
                 return schedule;
             }
 
@@ -147,10 +144,8 @@ public class WebSite {
             schedule = findCurrentDay(day, document);
             System.out.println("Parsed schedule for group " + groupId);
             if (!schedule.equals("Not found")) {
-                document.clearAttributes();
                 return schedule;
             }
-            document.clearAttributes();
             return "Нет расписания на нужную дату \n https://lk.ks.psuti.ru/?mn=2&obj=" + groupId;
         } catch (IOException e) {
             System.err.println("Error WebSiteClass (method getSchedule()) " + e);
