@@ -124,7 +124,7 @@ public class FilesController {
         return document.getFileSize() > maxFileSize * 1024 * 1024;
     }
 
-    public void saveDocument(Document document, String caption, String extension, String userPath) throws FileSizeException {
+    public String saveDocument(Document document, String caption, String extension, String userPath) throws FileSizeException {
         if (checkMaxSize(document)) {
             throw new FileSizeException("File too large");
         }
@@ -133,16 +133,21 @@ public class FilesController {
         try {
             String filePath = tBot.getFilePath(fileId);
             InputStream is = new URL("https://api.telegram.org/file/bot" + bot_token + "/" + filePath).openStream();
+            String path;
             if (caption != null && !caption.isEmpty()) {
-                Files.copy(is, Paths.get( userPath + delimiter + caption + "." + extension));
+                path = userPath + delimiter + caption + "." + extension;
+                Files.copy(is, Paths.get(path));
             } else {
-                Files.copy(is, Paths.get(userPath + delimiter + document.getFileName()));
+                path = userPath + delimiter + document.getFileName();
+                Files.copy(is, Paths.get(path));
             }
             is.close();
+            return path;
         } catch (TelegramApiException e) {
             System.err.println("Error FilesControllerClass (method FilesController(TgAPIException)) " + e);
         } catch (IOException e) {
             System.err.println("Error FilesControllerClass (method FilesController(IOException)) " + e);
         }
+        return "";
     }
 }

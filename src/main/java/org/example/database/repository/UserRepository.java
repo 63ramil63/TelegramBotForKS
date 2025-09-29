@@ -1,4 +1,6 @@
-package org.example.database;
+package org.example.database.repository;
+
+import org.example.database.Database;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -9,7 +11,7 @@ import java.util.List;
 
 public class UserRepository {
     private static final Database dataBaseConnection = Database.getInstance();
-    private static final String tableName = dataBaseConnection.tableName;
+    private static final String tableName = "users";
 
     private static final String GET_USER = "SELECT UserName FROM " +  tableName + " WHERE ChatId=?";
     private static final String GET_FILE_PATH = "SELECT FilePath FROM " + tableName + " WHERE ChatId=?";

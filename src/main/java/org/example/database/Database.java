@@ -12,8 +12,6 @@ import java.util.Properties;
 
 public class Database {
     private static HikariDataSource dataSource;
-    public String tableName;
-
     //сам экземпляр объекты
     private static final Database dataBaseConnection;
 
@@ -38,7 +36,6 @@ public class Database {
             URL = properties.getProperty("databaseURL");
             USER = properties.getProperty("user");
             PASS = properties.getProperty("pass");
-            tableName = properties.getProperty("tableName");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

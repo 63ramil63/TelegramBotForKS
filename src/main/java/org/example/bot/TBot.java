@@ -7,13 +7,15 @@ import org.example.bot.message.MessageBuilder;
 import org.example.bot.message.MessageWithDocBuilder;
 import org.example.bot.message.markup.MarkupKey;
 import org.example.bot.message.markup.MarkupSetter;
-import org.example.database.UserRepository;
+import org.example.database.repository.FileTrackerRepository;
+import org.example.database.repository.UserRepository;
 import org.example.files.FilesController;
 import org.example.files.exception.FileSizeException;
 import org.example.files.exception.IncorrectExtensionException;
 import org.example.schedule.ScheduleCache;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
+import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.Document;
@@ -49,7 +51,7 @@ public class TBot extends TelegramLongPollingBot {
             "Старайтесь не делать названия файлов и директории слишком большими, бот может дать сбой \n" +
             "Если столкнулись с проблемой, напишите в личку @wrotoftanks63";
 
-    private StringBuilder notification = new StringBuilder("Нет каких либо оповещений");
+    private final StringBuilder notification = new StringBuilder("Нет каких либо оповещений");
 
     public TBot() {
         loadConfig();
@@ -248,8 +250,17 @@ public class TBot extends TelegramLongPollingBot {
             }
         } else if (data.contains("File")) {
             MessageWithDocBuilder message = new MessageWithDocBuilder(chatId, data);
+            SendDocument sendDocument = message.getMessage();
+            if (adminsUserName.contains(userRepository.getUserName(chatId))) {
+                FileTrackerRepository fileTrackerRepository = new FileTrackerRepository();
+                long userId = fileTrackerRepository.getFileInfo(data.replaceAll("File$", ""));
+                String username = userRepository.getUserName(userId);
+                sendDocument.setCaption("Данный файл отправлен пользователем: " +
+                        (!username.isEmpty() ? username : " у данного пользователя нет username")
+                        + "\nChatId: " + userId);
+            }
             try {
-                execute(message.getMessage());
+                execute(sendDocument);
                 sendNewMessageResponse(chatId, "/start");
             } catch (TelegramApiException e) {
                 System.err.println("Error (TBotClass (method sendNewMessageResponse())) " + e);
@@ -288,13 +299,20 @@ public class TBot extends TelegramLongPollingBot {
         userPath = path + userPath;
         String fileName = update.getMessage().getDocument().getFileName();
         try {
+            FileTrackerRepository fileTrackerRepository = new FileTrackerRepository();
+
             // Получение расширения, документа и описания к нему
             String extension = FilesController.checkFileExtension(fileName, allowedExtensions);
             Document document = update.getMessage().getDocument();
             String caption = update.getMessage().getCaption();
-            filesController.saveDocument(document, caption, extension, userPath);
-            System.out.println("Сохранен документ от пользователя " + chatId + " / Документ: " + document.getFileName());
-            sendNewMessageResponse(chatId, "Document saved");
+            String pathToFile = filesController.saveDocument(document, caption, extension, userPath);
+            if (!pathToFile.isEmpty()) {
+                fileTrackerRepository.putFileInfo(chatId, pathToFile.replace(path, ""));
+                System.out.println("Сохранен документ от пользователя " + chatId + " / Документ: " + document.getFileName());
+                sendNewMessageResponse(chatId, "Document saved");
+            } else {
+                sendNewMessageResponse(chatId, "SimpleError");
+            }
         } catch (IncorrectExtensionException e) {
             System.err.println("Error (TBotClass (method updateHasDocument())) " + e);
             sendNewMessageResponse(chatId, "Incorrect file extension");
