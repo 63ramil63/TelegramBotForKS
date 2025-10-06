@@ -79,9 +79,9 @@ public class TBot extends TelegramLongPollingBot {
             System.err.println("Error (TBotClass (method loadConfig())) " + e);
         }
         filesController = new FilesController(this, bot_token, delimiter, path, maxFileSize);
-        markupSetter = new MarkupSetter(filesController, path);
         scheduleCache = new ScheduleCache(duration);
         fileTrackerRepository = new FileTrackerRepository();
+        markupSetter = new MarkupSetter(filesController, fileTrackerRepository, path);
         userRepository = new UserRepository();
         Runtime.getRuntime().addShutdownHook(new Thread(executorService::close));
         try (ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1)) {
@@ -308,7 +308,7 @@ public class TBot extends TelegramLongPollingBot {
             String pathToFile = filesController.saveDocument(document, caption, extension, userPath);
             if (!pathToFile.isEmpty()) {
                 fileTrackerRepository.putFileInfo(chatId, pathToFile.replace(path, ""));
-                System.out.println("Сохранен документ от пользователя " + chatId + " / Документ: " + document.getFileName());
+                System.out.println("Сохранен документ от пользователя " + chatId + "\n / Документ: " + document.getFileName());
                 sendNewMessageResponse(chatId, "Document saved");
             } else {
                 sendNewMessageResponse(chatId, "SimpleError");
@@ -319,6 +319,9 @@ public class TBot extends TelegramLongPollingBot {
         } catch (FileSizeException e) {
             System.err.println("Error (TBotClass (method updateHasDocument())) " + e);
             sendNewMessageResponse(chatId, "File too big");
+        } catch (TelegramApiException | IOException e) {
+            System.err.println("Error (TBotClass (method updateHasDocument()))");
+            sendNewMessageResponse(chatId, "SimpleError");
         }
     }
 
@@ -437,6 +440,17 @@ public class TBot extends TelegramLongPollingBot {
                 }
                 return;
             }
+            case "DeleteFileButtonPressed" -> {
+                message = setEditMessageWithoutMarkup(chatId, "Выберите файл, который хотите удалить", messageId);
+                message.setReplyMarkup(markupSetter.getChangeableMarkup("DeleteFileButtonPressed" + chatId));
+                try {
+                    execute(message);
+                } catch (TelegramApiException e) {
+                    System.err.println("Error (TBotClass (method sendEditMessageResponse(DeleteFileButtonPressed)))");
+                    sendEditMessageResponse(chatId, "SimpleError", messageId);
+                }
+                return;
+            }
             case "GroupNotSelected" -> {
                 message = setEditMessageWithoutMarkup(chatId, "У вас не выбрана группа \n Выберите курс", messageId);
                 message.setReplyMarkup(markupSetter.getChangeableMarkup("Year"));
@@ -459,7 +473,26 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
         }
-        if (data.contains("Folder")) {
+        if (data.contains("Del")) {
+            String correctPath = data.replaceAll("Del$", "");
+            try {
+                filesController.deleteFile(correctPath);
+                if (fileTrackerRepository.deleteUserFileFromRepository(correctPath)) {
+                    message = setEditMessageWithoutMarkup(chatId, "Файл удален!", messageId);
+                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
+                    try {
+                        execute(message);
+                    } catch (TelegramApiException e) {
+                        System.err.println();
+                    }
+                } else {
+                    sendEditMessageResponse(chatId, "SimpleError", messageId);
+                }
+            } catch (IOException e) {
+                System.err.println("Error (TBotClass (method sendEditMessageResponse(Delete))) " + e);
+                sendEditMessageResponse(chatId, "SimpleError", messageId);
+            }
+        } else if (data.contains("Folder")) {
             // Установка пути у пользователя
             String filePath = data.replaceAll("Folder$", "");
             // Установка нового пути пользователя
@@ -519,7 +552,9 @@ public class TBot extends TelegramLongPollingBot {
     private void checkCallbackData(long chatId, String data, int messageId) {
         if (data.contains("Folder") || data.equals("FileButtonPressed")) {
             sendEditMessageResponse(chatId, data, messageId);
-        } else if (data.contains("File")) {
+        } else if (data.contains("DeleteFileButtonPressed")) {
+            sendEditMessageResponse(chatId, data, messageId);
+        }else if (data.contains("File")) {
             deleteMessage(chatId, messageId);
             sendNewMessageResponse(chatId, data);
         } else {

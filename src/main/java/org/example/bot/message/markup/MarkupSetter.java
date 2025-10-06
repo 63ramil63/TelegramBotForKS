@@ -1,13 +1,13 @@
 package org.example.bot.message.markup;
 
 import org.example.bot.message.markup.button.ButtonSetter;
+import org.example.database.repository.FileTrackerRepository;
 import org.example.files.FilesController;
 import org.example.site.WebSite;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -15,10 +15,12 @@ public class MarkupSetter {
 
     private final FilesController filesController;
     private final String path;
+    private final FileTrackerRepository fileTrackerRepository;
 
-    public MarkupSetter(FilesController filesController, String path) {
+    public MarkupSetter(FilesController filesController, FileTrackerRepository fileTrackerRepository, String path) {
         this.filesController = filesController;
         this.path = path;
+        this.fileTrackerRepository = fileTrackerRepository;
     }
 
     private final ConcurrentHashMap<MarkupKey, InlineKeyboardMarkup> savedBasicMarkup = new ConcurrentHashMap<>();
@@ -109,13 +111,37 @@ public class MarkupSetter {
         return markup;
     }
 
+    // Получение файлов, которые сохранил пользователь и устанавливаем их как кнопки к сообщению
+    private InlineKeyboardMarkup setDeleteFilesMarkup(String key) {
+        // Удаляем лишние символы
+        long chatId = Integer.parseInt(key.replaceAll("DeleteFileButtonPressed", ""));
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+        // Получение всех файлов, отправленных пользователем
+        List<String> filesPath = fileTrackerRepository.getAllUserFiles(chatId);
+        for (String filePath : filesPath) {
+            List<InlineKeyboardButton> row = new ArrayList<>();
+            InlineKeyboardButton button = ButtonSetter.setButton(filePath, filePath + "Del");
+            row.add(button);
+            keyboard.add(row);
+        }
+        List<InlineKeyboardButton> row = new ArrayList<>();
+        row.add(ButtonSetter.setButton("Назад", "BackButtonPressed"));
+        keyboard.add(row);
+        markup.setKeyboard(keyboard);
+        return markup;
+    }
+
     public InlineKeyboardMarkup getChangeableMarkup(String key) {
         if (key.contains("Folder")) {
             key = key.replaceAll("Folder$", "");
             return filesController.getFilesFromFolder(key);
         } else if (key.equals("FileButtonPressed")) {
             return filesController.getFilesFromFolder(path);
-        } else if (key.contains("Year")) {
+        } else if (key.contains("DeleteFileButtonPressed")) {
+            return setDeleteFilesMarkup(key);
+        }
+        else if (key.contains("Year")) {
             if (!savedChangeableMarkup.containsKey("Year")) {
                 WebSite webSite = new WebSite();
                 List<String> yearsList = webSite.getYears();

@@ -79,11 +79,13 @@ public class FilesController {
             }
 
             InlineKeyboardButton back = ButtonSetter.setButton("Назад", "BackButtonPressed");
+            InlineKeyboardButton deleteButton = ButtonSetter.setButton("Удалить файл", "DeleteFileButtonPressed");
             // Добавление различных кнопок
             if (normalizedPath.equals(Path.of(this.path))) {
                 InlineKeyboardButton addFolder = ButtonSetter.setButton("Добавить папку", "AddFolderButtonPressed");
                 // Установка кнопки назад и добавить папку
-                keyboard.add(ButtonSetter.setRow(addFolder, back));
+                keyboard.add(ButtonSetter.setRow(addFolder, deleteButton));
+                keyboard.add(ButtonSetter.setRow(back));
             } else {
                 // Установка кнопки назад
                 keyboard.add(ButtonSetter.setRow(back));
@@ -124,30 +126,33 @@ public class FilesController {
         return document.getFileSize() > maxFileSize * 1024 * 1024;
     }
 
-    public String saveDocument(Document document, String caption, String extension, String userPath) throws FileSizeException {
+    public String saveDocument(Document document, String caption, String extension, String userPath)
+            throws FileSizeException, TelegramApiException, IOException {
         if (checkMaxSize(document)) {
             throw new FileSizeException("File too large");
         }
 
         String fileId = document.getFileId();
-        try {
-            String filePath = tBot.getFilePath(fileId);
-            InputStream is = new URL("https://api.telegram.org/file/bot" + bot_token + "/" + filePath).openStream();
-            String path;
-            if (caption != null && !caption.isEmpty()) {
-                path = userPath + delimiter + caption + "." + extension;
-                Files.copy(is, Paths.get(path));
-            } else {
-                path = userPath + delimiter + document.getFileName();
-                Files.copy(is, Paths.get(path));
-            }
-            is.close();
-            return path;
-        } catch (TelegramApiException e) {
-            System.err.println("Error FilesControllerClass (method FilesController(TgAPIException)) " + e);
-        } catch (IOException e) {
-            System.err.println("Error FilesControllerClass (method FilesController(IOException)) " + e);
+
+        String filePath = tBot.getFilePath(fileId);
+        InputStream is = new URL("https://api.telegram.org/file/bot" + bot_token + "/" + filePath).openStream();
+        String path;
+        if (caption != null && !caption.isEmpty()) {
+            path = userPath + delimiter + caption + "." + extension;
+            Files.copy(is, Paths.get(path));
+        } else {
+            path = userPath + delimiter + document.getFileName();
+            Files.copy(is, Paths.get(path));
         }
-        return "";
+        is.close();
+        return path;
+    }
+
+    public void deleteFile(String rawFilePath) throws IOException {
+        String normalizedPath = path + rawFilePath;
+        Path file = Path.of(normalizedPath);
+        System.out.println("before delete file");
+        Files.delete(file);
+        System.out.println("after delete file");
     }
 }

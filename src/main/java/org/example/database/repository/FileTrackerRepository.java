@@ -6,6 +6,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class FileTrackerRepository {
     private static final Database databaseConnection = Database.getInstance();
@@ -13,6 +15,8 @@ public class FileTrackerRepository {
 
     private static final String GET_FILE_INFO = "SELECT ChatId FROM " + tableName + " WHERE FilePath = ?";
     private static final String PUT_FILE_INFO = "INSERT INTO " + tableName + " (ChatId, FilePath) values (?, ?)";
+    private static final String GET_ALL_USER_FILES = "SELECT FilePath FROM " + tableName + " WHERE ChatId = ?";
+    private static final String DELETE_USER_FILE = "DELETE FROM " + tableName + " WHERE FilePath = ?";
 
     public void putFileInfo(long chatId, String filePath) {
         try (Connection connection = databaseConnection.getConnection();
@@ -26,7 +30,7 @@ public class FileTrackerRepository {
                 System.err.println("Error add file info " + filePath);
             }
         } catch (SQLException e) {
-            System.err.println("Error (FileTrackerClass (method putFileInfo)) " + e);
+            System.err.println("Error (FileTrackerRepositoryClass (method putFileInfo)) " + e);
         }
     }
 
@@ -41,8 +45,38 @@ public class FileTrackerRepository {
                 System.err.println("Error getFileInfo " + filePath);
             }
         } catch (SQLException e) {
-            System.err.println("Error (FileTrackerClass (method getFileInfo))");
+            System.err.println("Error (FileTrackerRepositoryClass (method getFileInfo))");
         }
         return 0;
+    }
+
+    public List<String> getAllUserFiles(long chatId) {
+        try (Connection connection = databaseConnection.getConnection();
+            PreparedStatement preparedStatement = connection.prepareStatement(GET_ALL_USER_FILES)) {
+            List<String> userFiles = new ArrayList<>();
+            preparedStatement.setLong(1, chatId);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                userFiles.add(resultSet.getNString(1));
+            }
+            return userFiles;
+        } catch (SQLException e) {
+            System.err.println("Error (FileTrackerRepositoryClass (method getAllUserFiles))");
+        }
+        return null;
+    }
+
+    public boolean deleteUserFileFromRepository(String filePath) {
+        try (Connection connection = databaseConnection.getConnection();
+            PreparedStatement preparedStatement = connection.prepareStatement(DELETE_USER_FILE)) {
+            preparedStatement.setString(1, filePath);
+            int rowsAffected = preparedStatement.executeUpdate();
+            if (rowsAffected > 0) {
+                return true;
+            }
+        } catch (SQLException e) {
+            System.err.println("Error (FileTrackerRepositoryClass (method deleteUserFilesFromRepository())) " + e);
+        }
+        return false;
     }
 }
