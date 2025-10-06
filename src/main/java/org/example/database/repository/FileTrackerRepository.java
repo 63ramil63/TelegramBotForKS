@@ -12,22 +12,36 @@ import java.util.List;
 public class FileTrackerRepository {
     private static final Database databaseConnection = Database.getInstance();
     private static final String tableName = "file_tracker";
+    private static final String filesHistoryTable = "files_history";
 
     private static final String GET_FILE_INFO = "SELECT ChatId FROM " + tableName + " WHERE FilePath = ?";
     private static final String PUT_FILE_INFO = "INSERT INTO " + tableName + " (ChatId, FilePath) values (?, ?)";
     private static final String GET_ALL_USER_FILES = "SELECT FilePath FROM " + tableName + " WHERE ChatId = ?";
     private static final String DELETE_USER_FILE = "DELETE FROM " + tableName + " WHERE FilePath = ?";
+    private static final String PUT_FILE_INFO_TO_FILES_HISTORY = "INSERT INTO " + filesHistoryTable + " (ChatId, FilePath) values (?,?)";
 
     public void putFileInfo(long chatId, String filePath) {
         try (Connection connection = databaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(PUT_FILE_INFO)) {
-            preparedStatement.setLong(1, chatId);
-            preparedStatement.setString(2, filePath);
-            int rowsAffected = preparedStatement.executeUpdate();
+             PreparedStatement preparedStatement1 = connection.prepareStatement(PUT_FILE_INFO);
+             PreparedStatement preparedStatement2 = connection.prepareStatement(PUT_FILE_INFO_TO_FILES_HISTORY)) {
+            // Для основной таблицы
+            preparedStatement1.setLong(1, chatId);
+            preparedStatement1.setString(2, filePath);
+            int rowsAffected = preparedStatement1.executeUpdate();
             if (rowsAffected > 0) {
                 System.out.println("Add file info for file " + filePath);
             } else {
                 System.err.println("Error add file info " + filePath);
+            }
+
+            // Для таблицы истории файлов
+            preparedStatement2.setLong(1, chatId);
+            preparedStatement2.setString(2, filePath);
+            rowsAffected = preparedStatement2.executeUpdate();
+            if (rowsAffected > 0) {
+                System.out.println("Add file info in history for file " + filePath);
+            } else {
+                System.err.println("Error add file info in history  " + filePath);
             }
         } catch (SQLException e) {
             System.err.println("Error (FileTrackerRepositoryClass (method putFileInfo)) " + e);
