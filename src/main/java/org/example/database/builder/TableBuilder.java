@@ -33,39 +33,35 @@ public class TableBuilder {
                 "PRIMARY KEY (Id))";
     }
 
+    public void checkSQLUpdate(int rowsAffected, String tableName) {
+        if(rowsAffected > 0) {
+            System.out.println(tableName + " table created");
+        } else {
+            System.out.println(tableName + " table found");
+        }
+    }
+
     public void createTables() {
         try (Connection connection = dataBaseConnection.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(CREATE_USERS_TABLE_SQL)) {
-            int i = preparedStatement.executeUpdate();
-            if (i > 0) {
-                System.out.println("Users table created");
-            } else {
-                System.out.println("Users table found");
-            }
+            int rowsAffected = preparedStatement.executeUpdate();
+            checkSQLUpdate(rowsAffected, "Users");
         } catch (SQLException e) {
             System.err.println("Error (TableBuilderClass (method - createTables()))" + e);
             System.exit(103);
         }
         try (Connection connection = dataBaseConnection.getConnection();
             PreparedStatement preparedStatement = connection.prepareStatement(CREATE_FILE_TRACKING_SQL)) {
-            int i = preparedStatement.executeUpdate();
-            if (i > 0) {
-                System.out.println("FileTracking table created");
-            } else {
-                System.out.println("FileTracking table found");
-            }
+            int rowsAffected = preparedStatement.executeUpdate();
+            checkSQLUpdate(rowsAffected, "FileTracking");
         } catch (SQLException e) {
             System.err.println("Error (TableBuilderClass (method - createTables()))" + e);
             System.exit(103);
         }
         try (Connection connection = dataBaseConnection.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(CREATE_FILES_HISTORY_SQL)) {
-            int i = preparedStatement.executeUpdate();
-            if (i > 0) {
-                System.out.println("FilesHistory table created");
-            } else {
-                System.out.println("FilesHistory table found");
-            }
+            int rowsAffected = preparedStatement.executeUpdate();
+            checkSQLUpdate(rowsAffected, "FileHistory");
         } catch (SQLException e) {
             System.err.println("Error (TableBuilderClass (method - createTables()))" + e);
             System.exit(103);

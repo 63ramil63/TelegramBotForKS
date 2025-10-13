@@ -131,7 +131,6 @@ public class WebSite {
 
             // Получение расписание на эту неделю
             String schedule = findCurrentDay(day, document);
-            System.out.println("Parsed schedule for group " + groupId);
             if (!schedule.equals("Not found")) {
                 return schedule;
             }
@@ -142,7 +141,6 @@ public class WebSite {
 
             // Расписание на след неделю
             schedule = findCurrentDay(day, document);
-            System.out.println("Parsed schedule for group " + groupId);
             if (!schedule.equals("Not found")) {
                 return schedule;
             }
