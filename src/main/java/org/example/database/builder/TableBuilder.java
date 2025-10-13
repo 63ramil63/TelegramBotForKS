@@ -11,6 +11,7 @@ public class TableBuilder {
     private final String CREATE_USERS_TABLE_SQL;
     private final String CREATE_FILE_TRACKING_SQL;
     private final String CREATE_FILES_HISTORY_SQL;
+    private final String CREATE_ADMINS_TABLE_SQL;
 
     public TableBuilder() {
         dataBaseConnection = Database.getInstance();
@@ -31,6 +32,10 @@ public class TableBuilder {
                 "ChatId BIGINT NOT NULL," +
                 "FilePath NVARCHAR(100) NOT NULL," +
                 "PRIMARY KEY (Id))";
+        CREATE_ADMINS_TABLE_SQL = "CREATE TABLE IF NOT EXISTS admins (" +
+                "ChatId BIGINT not null," +
+                "Role NVARCHAR(32)," +
+                "PRIMARY KEY (ChatId))";
     }
 
     public void checkSQLUpdate(int rowsAffected, String tableName) {
@@ -62,6 +67,14 @@ public class TableBuilder {
              PreparedStatement preparedStatement = connection.prepareStatement(CREATE_FILES_HISTORY_SQL)) {
             int rowsAffected = preparedStatement.executeUpdate();
             checkSQLUpdate(rowsAffected, "FileHistory");
+        } catch (SQLException e) {
+            System.err.println("Error (TableBuilderClass (method - createTables()))" + e);
+            System.exit(103);
+        }
+        try (Connection connection = dataBaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(CREATE_ADMINS_TABLE_SQL)) {
+            int rowsAffected = preparedStatement.executeUpdate();
+            checkSQLUpdate(rowsAffected, "Admins");
         } catch (SQLException e) {
             System.err.println("Error (TableBuilderClass (method - createTables()))" + e);
             System.exit(103);
