@@ -34,20 +34,22 @@ public class AdminRepository {
         return null;
     }
 
-    public void addAdmin(String username, String role) {
+    public boolean addAdmin(String username, String role) {
         try (Connection connection = databaseConnection.getConnection();
             PreparedStatement preparedStatement = connection.prepareStatement(ADD_ADMIN)) {
             preparedStatement.setString(1, username);
             preparedStatement.setString(2, role);
             int rowsAffected = preparedStatement.executeUpdate();
             if (rowsAffected > 0) {
-                System.out.println("Add admin with chatId: " + username);
+                System.out.println("Add admin with username: " + username);
+                return true;
             } else {
-                System.out.println("Error admin with chatId: " + username);
+                System.out.println("Error admin with username: " + username);
             }
         } catch (SQLException e) {
             System.err.println("Error (AdminRepositoryClass (method addAdmin())) " + username + " " + e);
         }
+        return false;
     }
 
     public boolean getAdmin(String username) {

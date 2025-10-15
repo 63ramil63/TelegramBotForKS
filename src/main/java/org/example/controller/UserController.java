@@ -30,10 +30,11 @@ public class UserController {
     }
 
     // Для обычных админов
-    public void addBaseAdmins(String username) {
+    public boolean addBaseAdmin(String username) {
         if (!checkAdmin(username)) {
-            adminRepository.addAdmin(username, AdminRole.Base.toString());
+            return adminRepository.addAdmin(username, AdminRole.Base.toString());
         }
+        return false;
     }
 
     public boolean checkUser(long chatId) {
