@@ -33,7 +33,7 @@ public class UserRepository {
             ResultSet resultSet = preparedStatement.executeQuery();
             if (resultSet.next()) {
                 String result = resultSet.getNString(1);
-                if (result != null) {
+                if (result != null && !result.isEmpty()) {
                     resultSet.close();
                     return result;
                 }
