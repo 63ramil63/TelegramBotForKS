@@ -13,16 +13,19 @@ public class AdminRepository {
     private static final Database databaseConnection = Database.getInstance();
     private static final String tableName = "admins";
 
-    private static final String GET_ADMINS = "SELECT ChatId FROM " + tableName;
-    private static final String ADD_ADMIN = "INSERT INTO " + tableName + " (ChatId, Role) values (?, ?)";
+    private static final String GET_ADMINS = "SELECT Username FROM " + tableName;
+    private static final String ADD_ADMIN = "INSERT INTO " + tableName + " (Username, Role) values (?, ?)";
+    private static final String GET_ADMIN = "SELECT Username FROM " + tableName + " WHERE Username = ?";
+    private static final String GET_ADMIN_ROLE = "SELECT Role FROM " + tableName + " WHERE Username = ?";
 
-    public List<Long> getAdminsChatId() {
+
+    public List<String> getAdminsUsername() {
         try (Connection connection = databaseConnection.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(GET_ADMINS)) {
-            List<Long> adminsChatId = new ArrayList<>();
+            List<String> adminsChatId = new ArrayList<>();
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
-                adminsChatId.add(resultSet.getLong(1));
+                adminsChatId.add(resultSet.getNString(1));
             }
             return adminsChatId;
         } catch (SQLException e) {
@@ -31,19 +34,47 @@ public class AdminRepository {
         return null;
     }
 
-    public void addAdmin(long chatId, String role) {
+    public void addAdmin(String username, String role) {
         try (Connection connection = databaseConnection.getConnection();
             PreparedStatement preparedStatement = connection.prepareStatement(ADD_ADMIN)) {
-            preparedStatement.setLong(1, chatId);
+            preparedStatement.setString(1, username);
             preparedStatement.setString(2, role);
             int rowsAffected = preparedStatement.executeUpdate();
             if (rowsAffected > 0) {
-                System.out.println("Add admin with chatId: " + chatId);
+                System.out.println("Add admin with chatId: " + username);
             } else {
-                System.out.println("Error admin with chatId: " + chatId);
+                System.out.println("Error admin with chatId: " + username);
             }
         } catch (SQLException e) {
-            System.err.println("Error (AdminRepositoryClass (method addAdmin())) " + chatId);
+            System.err.println("Error (AdminRepositoryClass (method addAdmin())) " + username + " " + e);
         }
+    }
+
+    public boolean getAdmin(String username) {
+        try (Connection connection = databaseConnection.getConnection();
+            PreparedStatement preparedStatement = connection.prepareStatement(GET_ADMIN)) {
+            preparedStatement.setString(1, username);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return true;
+            }
+        } catch (SQLException e) {
+            System.err.println("Error (AdminRepositoryClass (method getAdmin())) username: " + username + " " + e);
+        }
+        return false;
+    }
+
+    public String getAdminRole(String username) {
+        try (Connection connection = databaseConnection.getConnection();
+            PreparedStatement preparedStatement = connection.prepareStatement(GET_ADMIN_ROLE)) {
+            preparedStatement.setString(1, username);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getNString(1);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error (AdminRepositoryClass (method getAdminRole())) username: " + username + " " + e);
+        }
+        return "";
     }
 }

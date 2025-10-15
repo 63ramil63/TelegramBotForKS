@@ -33,9 +33,9 @@ public class TableBuilder {
                 "FilePath NVARCHAR(100) NOT NULL," +
                 "PRIMARY KEY (Id))";
         CREATE_ADMINS_TABLE_SQL = "CREATE TABLE IF NOT EXISTS admins (" +
-                "ChatId BIGINT not null," +
+                "Username NVARCHAR(128) not null," +
                 "Role NVARCHAR(32)," +
-                "PRIMARY KEY (ChatId))";
+                "PRIMARY KEY (Username))";
     }
 
     public void checkSQLUpdate(int rowsAffected, String tableName) {
