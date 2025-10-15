@@ -43,7 +43,7 @@ public class UserRepository {
             System.out.println(e);
             throw new RuntimeException(e);
         }
-        return "Not found";
+        return "";
     }
 
     public boolean getUser(long chatId) {
@@ -134,7 +134,7 @@ public class UserRepository {
                 System.out.println("Execute update error");
             }
         } catch (SQLException e) {
-            System.err.println("Error (UserRepositoryClass (method executeSQLUpdate())) " + e);
+            System.err.println("Error (UserRepositoryClass (method executeSQLUpdate())) " + e + "\n " + sql);
         }
     }
 

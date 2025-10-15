@@ -7,11 +7,14 @@ import org.example.bot.message.MessageBuilder;
 import org.example.bot.message.MessageWithDocBuilder;
 import org.example.bot.message.markup.MarkupKey;
 import org.example.bot.message.markup.MarkupSetter;
+import org.example.controller.UserController;
+import org.example.database.repository.AdminRepository;
 import org.example.database.repository.FileTrackerRepository;
 import org.example.database.repository.UserRepository;
 import org.example.files.FilesController;
 import org.example.files.exception.FileSizeException;
 import org.example.files.exception.IncorrectExtensionException;
+import org.example.role.AdminRole;
 import org.example.schedule.ScheduleCache;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
@@ -37,6 +40,8 @@ public class TBot extends TelegramLongPollingBot {
     private MarkupSetter markupSetter;
     private FilesController filesController;
     private ScheduleCache scheduleCache;
+    private AdminRepository adminRepository;
+    private UserController userController;
 
     private String bot_token;
     private String bot_name;
@@ -45,7 +50,7 @@ public class TBot extends TelegramLongPollingBot {
     public static String path;
     public static int maxFileSize;
     public static String delimiter;
-    private static List<String> adminsUserName;
+    private static List<String> adminsFromProperty;
 
     private final String helpResponse = "Напишите /start, если что-то сломалось \n" +
             "Чтобы сохранить файл, выберите путь и скиньте файл боту\n" +
@@ -58,7 +63,7 @@ public class TBot extends TelegramLongPollingBot {
         loadConfig();
     }
 
-    public void loadConfig() {
+    private void loadDataFromProperty() {
         Properties properties = new Properties();
         try (InputStream is = new FileInputStream(Main.propertyPath)) {
             properties.load(is);
@@ -74,54 +79,27 @@ public class TBot extends TelegramLongPollingBot {
             allowedExtensions = List.of(properties.getProperty("extensions").split(","));
             //макс размер файла в мб
             maxFileSize = Integer.parseInt(properties.getProperty("fileMaxSize"));
-            adminsUserName = List.of(properties.getProperty("admins").split(","));
+            adminsFromProperty = List.of(properties.getProperty("admins").split(","));
         } catch (IOException e) {
             System.err.println("Error (TBotClass (method loadConfig())) " + e);
+            System.exit(505);
         }
+    }
+    
+    private void loadConfig() {
+        loadDataFromProperty();
         filesController = new FilesController(this, bot_token, delimiter, path, maxFileSize);
         scheduleCache = new ScheduleCache(duration);
         fileTrackerRepository = new FileTrackerRepository();
         markupSetter = new MarkupSetter(filesController, fileTrackerRepository, path);
         userRepository = new UserRepository();
+        adminRepository = new AdminRepository();
         Runtime.getRuntime().addShutdownHook(new Thread(executorService::close));
         try (ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1)) {
             scheduler.scheduleAtFixedRate(scheduleCache::clearExpiredCache, duration, duration, TimeUnit.MINUTES);
         }
-    }
-
-    private boolean checkUser(long chatId) {
-        return userRepository.getUser(chatId);
-    }
-
-    private void addUser(long chatId) {
-        userRepository.addUser(chatId);
-    }
-
-    private void updateUserName(long chatId, String userName) {
-        userRepository.updateUserName(chatId, userName);
-    }
-
-    private long getChatId(Update update) {
-        if (update.hasCallbackQuery()) {
-            return update.getCallbackQuery().getMessage().getChatId();
-        } else if (update.hasMessage()) {
-            return update.getMessage().getChatId();
-        }
-        return 0;
-    }
-
-    private void checkAndAddUser(Update update) {
-        long chatId = getChatId(update);
-        if (!checkUser(chatId)) {
-            String userName = "undefined";
-            if (update.hasCallbackQuery()) {
-                userName = update.getCallbackQuery().getFrom().getUserName();
-            } else if (update.hasMessage()){
-                userName = update.getMessage().getChat().getUserName();
-            }
-            addUser(chatId);
-            updateUserName(chatId, userName);
-        }
+        userController = new UserController(userRepository, adminRepository);
+        userController.addAdminsFromProperty(adminsFromProperty);
     }
 
     @Override
@@ -144,6 +122,20 @@ public class TBot extends TelegramLongPollingBot {
         SendMessage sendMessage = messageBuilder.getMessage();
         sendMessage.setReplyMarkup(markupSetter.getBasicMarkup(key));
         return sendMessage;
+    }
+
+    private void sendToAll(List<Long> chatIdArray, String text) {
+        for (long id : chatIdArray) {
+            SendMessage sendMessage = new SendMessage();
+            sendMessage.setChatId(id);
+            sendMessage.setText(text);
+            try {
+                execute(sendMessage);
+                sendNewMessageResponse(id, "/start");
+            } catch (TelegramApiException e) {
+                System.err.println("Error (TBotClass (method sendNewMessageResponse(/sendToAll))) " + e);
+            }
+        }
     }
 
     private void sendNewMessageResponse(long chatId, String data) {
@@ -219,42 +211,41 @@ public class TBot extends TelegramLongPollingBot {
             }
         }
         if (data.contains("/sendToAll")) {
-            String text = data.replaceAll("/sendToAll", "");
-            if (!adminsUserName.contains(userRepository.getUserName(chatId))) {
+            if (!adminRepository.getAdmin(userRepository.getUserName(chatId))) {
                 sendNewMessageResponse(chatId, "AdminError");
                 return;
             }
+            String text = data.replaceAll("/sendToAll", "");
             if (!text.isEmpty()) {
                 List<Long> chatIdArray = userRepository.getAllUsersChatId();
                 if (!chatIdArray.isEmpty()) {
-                    for (long id : chatIdArray) {
-                        sendMessage = new SendMessage();
-                        sendMessage.setChatId(id);
-                        sendMessage.setText(text);
-                        try {
-                            execute(sendMessage);
-                            sendNewMessageResponse(id, "/start");
-                        } catch (TelegramApiException e) {
-                            System.err.println("Error (TBotClass (method sendNewMessageResponse(/sendToAll)))");
-                        }
-                    }
+                    sendToAll(chatIdArray, text);
                 }
             }
         } else if (data.contains("/sendNotification")) {
-            String text = data.replaceAll("/sendNotification", "");
-            if (!adminsUserName.contains(userRepository.getUserName(chatId))) {
+            if (!adminRepository.getAdmin(userRepository.getUserName(chatId))) {
                 sendNewMessageResponse(chatId, "AdminError");
                 return;
             }
+            String text = data.replaceAll("/sendNotification", "");
             if (!text.isEmpty()) {
                 notification.setLength(0);
                 notification.append(text);
                 sendNewMessageResponse(chatId, "/start");
             }
+        } else if (data.contains("/addAdmin")) {
+            boolean isAdmin = adminRepository.getAdmin(userRepository.getUserName(chatId));
+            String adminRole = adminRepository.getAdminRole(userRepository.getUserName(chatId));
+            if (!isAdmin || !adminRole.equals(AdminRole.Main.toString())) {
+                sendNewMessageResponse(chatId, "AdminError");
+                return;
+            }
+            String adminUsername = data.replaceAll("/addAdmin", "").trim();
+            userController.addBaseAdmins(adminUsername);
         } else if (data.contains("File")) {
             MessageWithDocBuilder message = new MessageWithDocBuilder(chatId, data);
             SendDocument sendDocument = message.getMessage();
-            if (adminsUserName.contains(userRepository.getUserName(chatId))) {
+            if (adminRepository.getAdmin(userRepository.getUserName(chatId))) {
                 long userId = fileTrackerRepository.getFileInfo(data.replaceAll("File$", ""));
                 String username = userRepository.getUserName(userId);
                 sendDocument.setCaption("Данный файл отправлен пользователем: " +
@@ -279,40 +270,45 @@ public class TBot extends TelegramLongPollingBot {
     // Если сообщение имеет только текст
     private void updateHasTextOnly(Update update) {
 
-        long chatId = update.getMessage().getChatId();
+        long chatId = userController.getChatId(update);
         String data = update.getMessage().getText();
-        checkAndAddUser(update);
+        userController.checkAndAddUser(update);
 
         sendNewMessageResponse(chatId, data);
     }
 
+    // Получение расширения, документа и описания к нему
+    private void saveDocument(Update update, String fileName, String userPath, long chatId) throws IncorrectExtensionException, IOException, FileSizeException, TelegramApiException {
+        // Получение расширения, документа и описания к нему
+        String extension = FilesController.checkFileExtension(fileName, allowedExtensions);
+        Document document = update.getMessage().getDocument();
+        String caption = update.getMessage().getCaption();
+        String pathToFile = filesController.saveDocument(document, caption, extension, userPath);
+        if (!pathToFile.isEmpty()) {
+            fileTrackerRepository.putFileInfo(chatId, pathToFile.replace(path, ""));
+            System.out.println("Сохранен документ от пользователя " + chatId + "\n / Документ: " + document.getFileName());
+            sendNewMessageResponse(chatId, "Document saved");
+        } else {
+            sendNewMessageResponse(chatId, "SimpleError");
+        }
+    }
+
     private void updateHasDocument(Update update) {
-        long chatId = update.getMessage().getChatId();
+        long chatId = userController.getChatId(update);
 
         // Убираем статус добавления новой папки
         userRepository.updateCanAddFolder(chatId, (byte) 0);
 
         // Проверка выбранного пользователем пути
         String userPath = userRepository.getFilePath(chatId);
-        if (userPath.equals("Not found")) {
+        if (userPath.isEmpty()) {
             sendNewMessageResponse(chatId, "PathCheckError");
             return;
         }
         userPath = path + userPath;
         String fileName = update.getMessage().getDocument().getFileName();
         try {
-            // Получение расширения, документа и описания к нему
-            String extension = FilesController.checkFileExtension(fileName, allowedExtensions);
-            Document document = update.getMessage().getDocument();
-            String caption = update.getMessage().getCaption();
-            String pathToFile = filesController.saveDocument(document, caption, extension, userPath);
-            if (!pathToFile.isEmpty()) {
-                fileTrackerRepository.putFileInfo(chatId, pathToFile.replace(path, ""));
-                System.out.println("Сохранен документ от пользователя " + chatId + "\n / Документ: " + document.getFileName());
-                sendNewMessageResponse(chatId, "Document saved");
-            } else {
-                sendNewMessageResponse(chatId, "SimpleError");
-            }
+            saveDocument(update, fileName, userPath, chatId);
         } catch (IncorrectExtensionException e) {
             System.err.println("Error (TBotClass (method updateHasDocument())) " + e);
             sendNewMessageResponse(chatId, "Incorrect file extension");
@@ -389,7 +385,7 @@ public class TBot extends TelegramLongPollingBot {
             }
             case "TodayScheduleButtonPressed" -> {
                 String groupId = userRepository.getGroupId(chatId);
-                if (groupId.equals("Not found")) {
+                if (groupId.isEmpty()) {
                     sendEditMessageResponse(chatId, "GroupNotSelected", messageId);
                     return;
                 }
@@ -405,7 +401,7 @@ public class TBot extends TelegramLongPollingBot {
             }
             case "TomorrowScheduleButtonPressed" -> {
                 String groupId = userRepository.getGroupId(chatId);
-                if (groupId.equals("Not found")) {
+                if (groupId.isEmpty()) {
                     sendEditMessageResponse(chatId, "GroupNotSelected", messageId);
                     return;
                 }
@@ -565,7 +561,7 @@ public class TBot extends TelegramLongPollingBot {
     private void updateHasCallbackQuery(Update update) {
         //getCallBackQuery дает те же возможности, что и message, но получить message можно только из CallBackQuery.getMessage
         long chatId = update.getCallbackQuery().getMessage().getChatId();
-        checkAndAddUser(update);
+        userController.checkAndAddUser(update);
 
         //удаление статуса создания папки
         userRepository.updateCanAddFolder(chatId, (byte) 0);
