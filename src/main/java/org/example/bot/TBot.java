@@ -131,7 +131,7 @@ public class TBot extends TelegramLongPollingBot {
             sendMessage.setText(text);
             try {
                 execute(sendMessage);
-                sendNewMessageResponse(id, "/start");
+                checkMessageBeforeResponse(id, "/start");
             } catch (TelegramApiException e) {
                 System.err.println("Error (TBotClass (method sendNewMessageResponse(/sendToAll))) " + e);
             }
@@ -147,7 +147,7 @@ public class TBot extends TelegramLongPollingBot {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
                     System.err.println("Error (TBotClass (method sendNewMessageResponse(case 'DocumentSaved'))) " + e);
-                    sendNewMessageResponse(chatId, "SimpleError");
+                    checkMessageBeforeResponse(chatId, "SimpleError");
                 }
                 return;
             }
@@ -157,7 +157,7 @@ public class TBot extends TelegramLongPollingBot {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
                     System.err.println("Error (TBotClass (method sendNewMessageResponse(case 'IncorrectFileExtension'))) " + e);
-                    sendNewMessageResponse(chatId, "SimpleError");
+                    checkMessageBeforeResponse(chatId, "SimpleError");
                 }
                 return;
             }
@@ -167,7 +167,7 @@ public class TBot extends TelegramLongPollingBot {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
                     System.err.println("Error (TBotClass (method sendNewMessageResponse(case 'FileTooBig'))) " + e);
-                    sendNewMessageResponse(chatId, "SimpleError");
+                    checkMessageBeforeResponse(chatId, "SimpleError");
                 }
                 return;
             }
@@ -176,7 +176,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
-                    sendNewMessageResponse(chatId, "SimpleError");
+                    checkMessageBeforeResponse(chatId, "SimpleError");
                     System.err.println("Error (TBotClass (method sendNewMessageResponse(case 'FolderAdded'))) " + e);
                 }
                 return;
@@ -208,6 +208,15 @@ public class TBot extends TelegramLongPollingBot {
                 }
                 return;
             }
+            case "PathCheckError" -> {
+                sendMessage = setSendMessage(chatId, "Для хранения файлов выберите папку своей группы", MarkupKey.MainMenu);
+                try {
+                    execute(sendMessage);
+                } catch (TelegramApiException e) {
+                    System.err.println("Error (TBotClass (method sendNewMessageResponse(case 'PathCheckError'))) " + e);
+                }
+                return;
+            }
         }
         if (data.contains("File")) {
             MessageWithDocBuilder message = new MessageWithDocBuilder(chatId, data);
@@ -221,15 +230,15 @@ public class TBot extends TelegramLongPollingBot {
             }
             try {
                 execute(sendDocument);
-                sendNewMessageResponse(chatId, "/start");
+                checkMessageBeforeResponse(chatId, "/start");
             } catch (TelegramApiException e) {
                 System.err.println("Error (TBotClass (method sendNewMessageResponse())) " + e);
-                sendNewMessageResponse(chatId, "SimpleError");
+                checkMessageBeforeResponse(chatId, "SimpleError");
             }
         } else if (FilesController.checkFileName(data)) {
             if (userRepository.getCanAddFolder(chatId)) {
                 filesController.addFolder(data.trim());
-                sendNewMessageResponse(chatId, "FolderAdded");
+                checkMessageBeforeResponse(chatId, "FolderAdded");
             }
         }
     }
@@ -244,14 +253,14 @@ public class TBot extends TelegramLongPollingBot {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
                     System.err.println("Error (TBotClass (method sendNewMessageResponse(case /start))) " + e);
-                    sendNewMessageResponse(chatId, "SimpleError");
+                    checkMessageBeforeResponse(chatId, "SimpleError");
                 }
                 return;
             }
         }
         if (data.contains("/sendToAll")) {
             if (!adminRepository.getAdmin(userRepository.getUserName(chatId))) {
-                sendNewMessageResponse(chatId, "AdminError");
+                checkMessageBeforeResponse(chatId, "AdminError");
                 return;
             }
             String text = data.replaceAll("/sendToAll", "");
@@ -263,20 +272,20 @@ public class TBot extends TelegramLongPollingBot {
             }
         } else if (data.contains("/sendNotification")) {
             if (!adminRepository.getAdmin(userRepository.getUserName(chatId))) {
-                sendNewMessageResponse(chatId, "AdminError");
+                checkMessageBeforeResponse(chatId, "AdminError");
                 return;
             }
             String text = data.replaceAll("/sendNotification", "");
             if (!text.isEmpty()) {
                 notification.setLength(0);
                 notification.append(text);
-                sendNewMessageResponse(chatId, "/start");
+                checkMessageBeforeResponse(chatId, "/start");
             }
         } else if (data.contains("/addAdmin")) {
             boolean isAdmin = adminRepository.getAdmin(userRepository.getUserName(chatId));
             String adminRole = adminRepository.getAdminRole(userRepository.getUserName(chatId));
             if (!isAdmin || !adminRole.equals(AdminRole.Main.toString())) {
-                sendNewMessageResponse(chatId, "AdminError");
+                checkMessageBeforeResponse(chatId, "AdminError");
                 return;
             }
             String adminUsername = data.replaceAll("/addAdmin", "").trim();
@@ -314,9 +323,9 @@ public class TBot extends TelegramLongPollingBot {
         if (!pathToFile.isEmpty()) {
             fileTrackerRepository.putFileInfo(chatId, pathToFile.replace(path, ""));
             System.out.println("Сохранен документ от пользователя " + chatId + "\n / Документ: " + document.getFileName());
-            sendNewMessageResponse(chatId, "DocumentSaved");
+            checkMessageBeforeResponse(chatId, "DocumentSaved");
         } else {
-            sendNewMessageResponse(chatId, "SimpleError");
+            checkMessageBeforeResponse(chatId, "SimpleError");
         }
     }
 
@@ -329,7 +338,7 @@ public class TBot extends TelegramLongPollingBot {
         // Проверка выбранного пользователем пути
         String userPath = userRepository.getFilePath(chatId);
         if (userPath.isEmpty()) {
-            sendNewMessageResponse(chatId, "PathCheckError");
+            checkMessageBeforeResponse(chatId, "PathCheckError");
             return;
         }
         userPath = path + userPath;
@@ -338,13 +347,13 @@ public class TBot extends TelegramLongPollingBot {
             saveDocument(update, fileName, userPath, chatId);
         } catch (IncorrectExtensionException e) {
             System.err.println("Error (TBotClass (method updateHasDocument())) " + e);
-            sendNewMessageResponse(chatId, "IncorrectFileExtension");
+            checkMessageBeforeResponse(chatId, "IncorrectFileExtension");
         } catch (FileSizeException e) {
             System.err.println("Error (TBotClass (method updateHasDocument())) " + e);
-            sendNewMessageResponse(chatId, "FileTooBig");
+            checkMessageBeforeResponse(chatId, "FileTooBig");
         } catch (TelegramApiException | IOException e) {
-            System.err.println("Error (TBotClass (method updateHasDocument()))");
-            sendNewMessageResponse(chatId, "SimpleError");
+            System.err.println("Error (TBotClass (method updateHasDocument())) " + e);
+            checkMessageBeforeResponse(chatId, "SimpleError");
         }
     }
 
@@ -579,7 +588,7 @@ public class TBot extends TelegramLongPollingBot {
             sendEditMessageResponse(chatId, data, messageId);
         }else if (data.contains("File")) {
             deleteMessage(chatId, messageId);
-            sendNewMessageResponse(chatId, data);
+            checkMessageBeforeResponse(chatId, data);
         } else {
             sendEditMessageResponse(chatId, data, messageId);
         }
