@@ -1,6 +1,8 @@
 package org.example.bot.message.markup;
 
+import org.example.bot.TBot;
 import org.example.bot.message.markup.button.ButtonSetter;
+import org.example.controller.UserController;
 import org.example.database.repository.FileTrackerRepository;
 import org.example.files.FilesController;
 import org.example.site.WebSite;
@@ -14,13 +16,16 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MarkupSetter {
 
     private final FilesController filesController;
-    private final String path;
     private final FileTrackerRepository fileTrackerRepository;
+    private final UserController userController;
 
-    public MarkupSetter(FilesController filesController, FileTrackerRepository fileTrackerRepository, String path) {
+    private static InlineKeyboardButton backButton;
+
+    public MarkupSetter(FilesController filesController, FileTrackerRepository fileTrackerRepository, UserController userController) {
         this.filesController = filesController;
-        this.path = path;
         this.fileTrackerRepository = fileTrackerRepository;
+        this.userController = userController;
+        backButton = ButtonSetter.setButton("Назад", "BackButtonPressed");
     }
 
     private final ConcurrentHashMap<MarkupKey, InlineKeyboardMarkup> savedBasicMarkup = new ConcurrentHashMap<>();
@@ -63,8 +68,7 @@ public class MarkupSetter {
         keyboard.add(ButtonSetter.setRow(siteButton));
 
         //кнопка для возвращения в глав меню
-        InlineKeyboardButton back = ButtonSetter.setButton("Назад", "BackButtonPressed");
-        keyboard.add(ButtonSetter.setRow(back));
+        keyboard.add(ButtonSetter.setRow(backButton));
 
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         markup.setKeyboard(keyboard);
@@ -104,44 +108,84 @@ public class MarkupSetter {
             row.add(button);
             keyboard.add(row);
         }
-        List<InlineKeyboardButton> row = new ArrayList<>();
-        row.add(ButtonSetter.setButton("Назад", "LessonButtonPressed"));
-        keyboard.add(row);
+        keyboard.add(ButtonSetter.setRow(backButton));
         markup.setKeyboard(keyboard);
         return markup;
     }
 
     // Получение файлов, которые сохранил пользователь и устанавливаем их как кнопки к сообщению
-    private InlineKeyboardMarkup setDeleteFilesMarkup(String key) {
-        // Удаляем лишние символы
-        long chatId = Integer.parseInt(key.replaceAll("DeleteFileButtonPressed", ""));
+    private InlineKeyboardMarkup setDeleteUserFilesMarkup(long chatId) {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
         // Получение всех файлов, отправленных пользователем
         List<String> filesPath = fileTrackerRepository.getAllUserFiles(chatId);
-        for (String filePath : filesPath) {
-            List<InlineKeyboardButton> row = new ArrayList<>();
-            InlineKeyboardButton button = ButtonSetter.setButton(filePath, filePath + "Del");
-            row.add(button);
-            keyboard.add(row);
+        if (filesPath != null && !filesPath.isEmpty()) {
+            for (String filePath : filesPath) {
+                InlineKeyboardButton button = ButtonSetter.setButton(filePath, filePath + "Del");
+                keyboard.add(ButtonSetter.setRow(button));
+            }
         }
-        List<InlineKeyboardButton> row = new ArrayList<>();
-        row.add(ButtonSetter.setButton("Назад", "BackButtonPressed"));
-        keyboard.add(row);
+        keyboard.add(ButtonSetter.setRow(backButton));
         markup.setKeyboard(keyboard);
         return markup;
+    }
+
+    private InlineKeyboardMarkup setSelectFolderToDeleteFilesByAdmin() {
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+        List<String> folders = filesController.getFoldersFromTable();
+        if (folders != null && !folders.isEmpty()) {
+            for (String folder : folders) {
+                InlineKeyboardButton button = ButtonSetter.setButton(folder, folder + "FilesDelAdm");
+                keyboard.add(ButtonSetter.setRow(button));
+            }
+        }
+        keyboard.add(ButtonSetter.setRow(backButton));
+        markup.setKeyboard(keyboard);
+        return markup;
+    }
+
+
+
+    private InlineKeyboardMarkup setDeleteFilesFromFolderByAdm(String folder) {
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+        List<String> files = filesController.getFilesFromDatabaseByFolder(folder);
+        if (files != null && !files.isEmpty()) {
+            for (String file : files) {
+                InlineKeyboardButton button = ButtonSetter.setButton(file, folder + TBot.delimiter + file + "Del");
+                keyboard.add(ButtonSetter.setRow(button));
+            }
+        }
+        keyboard.add(ButtonSetter.setRow(backButton));
+        markup.setKeyboard(keyboard);
+        return markup;
+    }
+
+    private InlineKeyboardMarkup setDeleteFilesMarkup(String key) {
+        if (key.contains("DeleteFileButtonPressed")) {
+            long chatId = Long.parseLong(key.replaceAll("DeleteFileButtonPressed", ""));
+            if (userController.checkAdmin(userController.getUsername(chatId))) {
+                return setSelectFolderToDeleteFilesByAdmin();
+            } else {
+                return setDeleteUserFilesMarkup(chatId);
+            }
+        } else if (key.contains("FilesDelAdm")) {
+            String folder = key.replaceAll("FilesDelAdm", "");
+            return setDeleteFilesFromFolderByAdm(folder);
+        }
+        return getBasicMarkup(MarkupKey.MainMenu);
     }
 
     public InlineKeyboardMarkup getChangeableMarkup(String key) {
         if (key.contains("Folder")) {
             key = key.replaceAll("Folder$", "");
-            return filesController.getFilesFromFolder(key);
+            return filesController.getFilesFromFolderMarkup(key);
         } else if (key.equals("FileButtonPressed")) {
-            return filesController.getFilesFromFolder(path);
-        } else if (key.contains("DeleteFileButtonPressed")) {
+            return filesController.getFoldersFromDatabaseMarkup();
+        } else if (key.contains("DeleteFileButtonPressed") || key.contains("FilesDelAdm")) {
             return setDeleteFilesMarkup(key);
-        }
-        else if (key.contains("Year")) {
+        } else if (key.contains("Year")) {
             if (!savedChangeableMarkup.containsKey("Year")) {
                 WebSite webSite = new WebSite();
                 List<String> yearsList = webSite.getYears();

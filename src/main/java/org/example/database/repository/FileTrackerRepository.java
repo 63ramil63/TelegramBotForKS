@@ -1,5 +1,6 @@
 package org.example.database.repository;
 
+import org.example.bot.TBot;
 import org.example.database.Database;
 
 import java.sql.Connection;
@@ -14,34 +15,36 @@ public class FileTrackerRepository {
     private static final String tableName = "file_tracker";
     private static final String filesHistoryTable = "files_history";
 
-    private static final String GET_FILE_INFO = "SELECT ChatId FROM " + tableName + " WHERE FilePath = ?";
-    private static final String PUT_FILE_INFO = "INSERT INTO " + tableName + " (ChatId, FilePath) values (?, ?)";
-    private static final String GET_ALL_USER_FILES = "SELECT FilePath FROM " + tableName + " WHERE ChatId = ?";
-    private static final String DELETE_USER_FILE = "DELETE FROM " + tableName + " WHERE FilePath = ?";
-    private static final String PUT_FILE_INFO_TO_FILES_HISTORY = "INSERT INTO " + filesHistoryTable + " (ChatId, FilePath) values (?,?)";
+    private static final String GET_FILE_INFO = "SELECT ChatId FROM " + tableName + " WHERE Folder = ? AND FileName = ?";
+    private static final String PUT_FILE_INFO = "INSERT INTO " + tableName + " (ChatId, Folder, FileName) values (?, ?, ?)";
+    private static final String GET_ALL_USER_FILES = "SELECT Folder, FileName FROM " + tableName + " WHERE ChatId = ?";
+    private static final String DELETE_USER_FILE = "DELETE FROM " + tableName + " WHERE Folder = ? AND FileName = ?";
+    private static final String PUT_FILE_INFO_TO_FILES_HISTORY = "INSERT INTO " + filesHistoryTable + " (ChatId, FilePath) values (? ,?)";
+    private static final String GET_ALL_FILES_BY_FOLDER_NAME = "SELECT FileName FROM " + tableName + " WHERE Folder = ?";
 
-    public void putFileInfo(long chatId, String filePath) {
+    public void putFileInfo(long chatId, String folder, String fileName) {
         try (Connection connection = databaseConnection.getConnection();
              PreparedStatement preparedStatement1 = connection.prepareStatement(PUT_FILE_INFO);
              PreparedStatement preparedStatement2 = connection.prepareStatement(PUT_FILE_INFO_TO_FILES_HISTORY)) {
             // Для основной таблицы
             preparedStatement1.setLong(1, chatId);
-            preparedStatement1.setString(2, filePath);
+            preparedStatement1.setNString(2, folder);
+            preparedStatement1.setNString(3, fileName);
             int rowsAffected = preparedStatement1.executeUpdate();
             if (rowsAffected > 0) {
-                System.out.println("Add file info for file " + filePath);
+                System.out.println("Add file info for file " + folder + " / " + fileName);
             } else {
-                System.err.println("Error add file info " + filePath);
+                System.err.println("Error add file info " + folder + " / " + fileName);
             }
 
             // Для таблицы истории файлов
             preparedStatement2.setLong(1, chatId);
-            preparedStatement2.setString(2, filePath);
+            preparedStatement2.setString(2, folder + "/" + fileName);
             rowsAffected = preparedStatement2.executeUpdate();
             if (rowsAffected > 0) {
-                System.out.println("Add file info in history for file " + filePath);
+                System.out.println("Add file info in history for file " + folder + "/" + fileName);
             } else {
-                System.err.println("Error add file info in history  " + filePath);
+                System.err.println("Error add file info in history  " + folder + "/" + fileName);
             }
         } catch (SQLException e) {
             System.err.println("Error (FileTrackerRepositoryClass (method putFileInfo)) " + e);
@@ -51,7 +54,11 @@ public class FileTrackerRepository {
     public long getFileInfo(String filePath) {
         try (Connection connection = databaseConnection.getConnection();
             PreparedStatement preparedStatement = connection.prepareStatement(GET_FILE_INFO)) {
-            preparedStatement.setString(1, filePath);
+            int delimiterIndex = filePath.indexOf(TBot.delimiter);
+            String folder = filePath.substring(0, delimiterIndex);
+            String file = filePath.substring(delimiterIndex + 1);
+            preparedStatement.setString(1, folder);
+            preparedStatement.setString(2, file);
             ResultSet resultSet = preparedStatement.executeQuery();
             if (resultSet.next()) {
                 return resultSet.getLong(1);
@@ -59,7 +66,7 @@ public class FileTrackerRepository {
                 System.err.println("Error getFileInfo " + filePath);
             }
         } catch (SQLException e) {
-            System.err.println("Error (FileTrackerRepositoryClass (method getFileInfo))");
+            System.err.println("Error (FileTrackerRepositoryClass (method getFileInfo)) " + e);
         }
         return 0;
     }
@@ -71,19 +78,20 @@ public class FileTrackerRepository {
             preparedStatement.setLong(1, chatId);
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
-                userFiles.add(resultSet.getNString(1));
+                userFiles.add(resultSet.getNString(1) + TBot.delimiter + resultSet.getNString(2));
             }
             return userFiles;
         } catch (SQLException e) {
-            System.err.println("Error (FileTrackerRepositoryClass (method getAllUserFiles))");
+            System.err.println("Error (FileTrackerRepositoryClass (method getAllUserFiles)) " + e);
         }
         return null;
     }
 
-    public boolean deleteUserFileFromRepository(String filePath) {
+    public boolean deleteUserFileFromRepository(String folder, String fileName) {
         try (Connection connection = databaseConnection.getConnection();
             PreparedStatement preparedStatement = connection.prepareStatement(DELETE_USER_FILE)) {
-            preparedStatement.setString(1, filePath);
+            preparedStatement.setNString(1, folder);
+            preparedStatement.setNString(2, fileName);
             int rowsAffected = preparedStatement.executeUpdate();
             if (rowsAffected > 0) {
                 return true;
@@ -92,5 +100,21 @@ public class FileTrackerRepository {
             System.err.println("Error (FileTrackerRepositoryClass (method deleteUserFilesFromRepository())) " + e);
         }
         return false;
+    }
+
+    public List<String> getFilesByFolderName(String folder) {
+        List<String> files = new ArrayList<>();
+        try (Connection connection = databaseConnection.getConnection();
+            PreparedStatement preparedStatement = connection.prepareStatement(GET_ALL_FILES_BY_FOLDER_NAME)) {
+            preparedStatement.setNString(1, folder);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                files.add(resultSet.getNString(1));
+            }
+            return files;
+        } catch (SQLException e) {
+            System.err.println("Error (FileTrackerRepositoryClass (method getAllFiles())) " + e);
+        }
+        return files;
     }
 }

@@ -49,6 +49,10 @@ public class UserController {
         userRepository.updateUserName(chatId, userName);
     }
 
+    public String getUsername(long chatId) {
+        return userRepository.getUserName(chatId);
+    }
+
     // Возвращает chatId, независимо от того, какое это сообщение
     public long getChatId(Update update) {
         if (update.hasCallbackQuery()) {
@@ -60,7 +64,7 @@ public class UserController {
     }
 
     // Получаем username пользователя
-    public String getUsername(Update update) {
+    private String getUsernameFromUpdate(Update update) {
         if (update.hasCallbackQuery()) {
             return update.getCallbackQuery().getFrom().getUserName();
         } else if (update.hasMessage()){
@@ -72,7 +76,7 @@ public class UserController {
     public void checkAndAddUser(Update update) {
         long chatId = getChatId(update);
         if (!checkUser(chatId)) {
-            String userName = getUsername(update);
+            String userName = getUsernameFromUpdate(update);
             addUser(chatId);
             updateUserName(chatId, userName);
         }

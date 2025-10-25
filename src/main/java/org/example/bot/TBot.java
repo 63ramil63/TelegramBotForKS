@@ -10,10 +10,12 @@ import org.example.bot.message.markup.MarkupSetter;
 import org.example.controller.UserController;
 import org.example.database.repository.AdminRepository;
 import org.example.database.repository.FileTrackerRepository;
+import org.example.database.repository.FolderRepository;
 import org.example.database.repository.UserRepository;
 import org.example.files.FilesController;
 import org.example.files.exception.FileSizeException;
 import org.example.files.exception.IncorrectExtensionException;
+import org.example.files.exception.InvalidCallbackDataException;
 import org.example.role.AdminRole;
 import org.example.schedule.ScheduleCache;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -42,6 +44,7 @@ public class TBot extends TelegramLongPollingBot {
     private ScheduleCache scheduleCache;
     private AdminRepository adminRepository;
     private UserController userController;
+    private FolderRepository folderRepository;
 
     private String bot_token;
     private String bot_name;
@@ -88,10 +91,10 @@ public class TBot extends TelegramLongPollingBot {
 
     private void loadConfig() {
         loadDataFromProperty();
-        filesController = new FilesController(this, bot_token, delimiter, path, maxFileSize);
-        scheduleCache = new ScheduleCache(duration);
+        folderRepository = new FolderRepository();
         fileTrackerRepository = new FileTrackerRepository();
-        markupSetter = new MarkupSetter(filesController, fileTrackerRepository, path);
+        filesController = new FilesController(this, folderRepository, fileTrackerRepository, bot_token, delimiter, path, maxFileSize);
+        scheduleCache = new ScheduleCache(duration);
         userRepository = new UserRepository();
         adminRepository = new AdminRepository();
         Runtime.getRuntime().addShutdownHook(new Thread(executorService::close));
@@ -99,7 +102,10 @@ public class TBot extends TelegramLongPollingBot {
             scheduler.scheduleAtFixedRate(scheduleCache::clearExpiredCache, duration, duration, TimeUnit.MINUTES);
         }
         userController = new UserController(userRepository, adminRepository);
+        markupSetter = new MarkupSetter(filesController, fileTrackerRepository, userController);
         userController.addAdminsFromProperty(adminsFromProperty);
+        filesController.synchronizeFoldersWithDatabase();
+        filesController.synchronizeFilesWithDatabase();
     }
 
     @Override
@@ -139,6 +145,7 @@ public class TBot extends TelegramLongPollingBot {
     }
 
     private void sendNewMessageResponse(long chatId, String data) {
+        System.out.println("Data is : " + data);
         SendMessage sendMessage;
         switch (data) {
             case "DocumentSaved" -> {
@@ -217,6 +224,14 @@ public class TBot extends TelegramLongPollingBot {
                 }
                 return;
             }
+            case "InvalidFileName" -> {
+                sendMessage = setSendMessage(chatId, "Возникла ошибка, название файла слишком большое, сделайте его поменьше и попытайтесь снова", MarkupKey.MainMenu);
+                try {
+                    execute(sendMessage);
+                } catch (TelegramApiException e) {
+                    System.err.println("Error (TBotClass (method sendNewMessageResponse(case 'InvalidFileName'))) " + e);
+                }
+            }
         }
         if (data.contains("File")) {
             MessageWithDocBuilder message = new MessageWithDocBuilder(chatId, data);
@@ -237,7 +252,9 @@ public class TBot extends TelegramLongPollingBot {
             }
         } else if (FilesController.checkFileName(data)) {
             if (userRepository.getCanAddFolder(chatId)) {
-                filesController.addFolder(data.trim());
+                String folderName = data.trim();
+                filesController.addFolder(folderName);
+                folderRepository.addFolder(folderName);
                 checkMessageBeforeResponse(chatId, "FolderAdded");
             }
         }
@@ -296,7 +313,8 @@ public class TBot extends TelegramLongPollingBot {
     }
 
     private void checkMessageBeforeResponse(long chatId, String data) {
-        if (data.contains("/")) {
+        //Фикс для Unix систем
+        if (data.charAt(0) == '/') {
             sendNewMessageResponseOnCommand(chatId, data);
         } else {
             sendNewMessageResponse(chatId, data);
@@ -314,14 +332,19 @@ public class TBot extends TelegramLongPollingBot {
     }
 
     // Получение расширения, документа и описания к нему
-    private void saveDocument(Update update, String fileName, String userPath, long chatId) throws IncorrectExtensionException, IOException, FileSizeException, TelegramApiException {
+    private void saveDocument(Update update, String fileName, String userPath, long chatId)
+            throws IncorrectExtensionException, IOException, FileSizeException, TelegramApiException, InvalidCallbackDataException {
         // Получение расширения, документа и описания к нему
         String extension = FilesController.checkFileExtension(fileName, allowedExtensions);
         Document document = update.getMessage().getDocument();
         String caption = update.getMessage().getCaption();
         String pathToFile = filesController.saveDocument(document, caption, extension, userPath);
         if (!pathToFile.isEmpty()) {
-            fileTrackerRepository.putFileInfo(chatId, pathToFile.replace(path, ""));
+            String target = pathToFile.replace(path, "");
+            int delimiterIndex = target.indexOf(delimiter);
+            String folder = target.substring(0, delimiterIndex);
+            String file = target.substring(delimiterIndex + 1);
+            fileTrackerRepository.putFileInfo(chatId, folder, file);
             System.out.println("Сохранен документ от пользователя " + chatId + "\n / Документ: " + document.getFileName());
             checkMessageBeforeResponse(chatId, "DocumentSaved");
         } else {
@@ -346,14 +369,17 @@ public class TBot extends TelegramLongPollingBot {
         try {
             saveDocument(update, fileName, userPath, chatId);
         } catch (IncorrectExtensionException e) {
-            System.err.println("Error (TBotClass (method updateHasDocument())) " + e);
+            System.err.println("Error (TBotClass (method updateHasDocument(IncorrectExtensionException))) " + e);
             checkMessageBeforeResponse(chatId, "IncorrectFileExtension");
         } catch (FileSizeException e) {
-            System.err.println("Error (TBotClass (method updateHasDocument())) " + e);
+            System.err.println("Error (TBotClass (method updateHasDocument(FileSizeException))) " + e);
             checkMessageBeforeResponse(chatId, "FileTooBig");
         } catch (TelegramApiException | IOException e) {
-            System.err.println("Error (TBotClass (method updateHasDocument())) " + e);
+            System.err.println("Error (TBotClass (method updateHasDocument(TelegramApi/IOException))) " + e);
             checkMessageBeforeResponse(chatId, "SimpleError");
+        } catch (InvalidCallbackDataException e) {
+            System.err.println("Error (TBotClass (method updateHasDocument(InvalidCallbackDataException))) " + e);
+            checkMessageBeforeResponse(chatId, "InvalidFileName");
         }
     }
 
@@ -505,11 +531,24 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
         }
-        if (data.contains("Del")) {
+
+        if (data.contains("FilesDelAdm")) {
+            message = setEditMessageWithoutMarkup(chatId, "Выберите файл, который хотите удалить", messageId);
+            message.setReplyMarkup(markupSetter.getChangeableMarkup(data));
+            System.out.println("data : " + data);
+            try {
+                execute(message);
+            } catch (TelegramApiException e) {
+                System.err.println("Error (TBotClass (method sendEditMessageResponse(FilesDelAdm))) " + e);
+            }
+        } else if (data.contains("Del")) {
             String correctPath = data.replaceAll("Del$", "");
             try {
                 filesController.deleteFile(correctPath);
-                if (fileTrackerRepository.deleteUserFileFromRepository(correctPath)) {
+                int delimiterIndex = correctPath.indexOf(delimiter);
+                String folder = correctPath.substring(0, delimiterIndex);
+                String file = correctPath.substring(delimiterIndex + 1);
+                if (fileTrackerRepository.deleteUserFileFromRepository(folder, file)) {
                     message = setEditMessageWithoutMarkup(chatId, "Файл удален!", messageId);
                     message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
                     try {
@@ -521,7 +560,7 @@ public class TBot extends TelegramLongPollingBot {
                     sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
             } catch (IOException e) {
-                System.err.println("Error (TBotClass (method sendEditMessageResponse(Delete))) " + e);
+                System.err.println("Error (TBotClass (method sendEditMessageResponse(Del))) " + e);
                 sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
         } else if (data.contains("Folder")) {
@@ -584,9 +623,9 @@ public class TBot extends TelegramLongPollingBot {
     private void checkCallbackData(long chatId, String data, int messageId) {
         if (data.contains("Folder") || data.equals("FileButtonPressed")) {
             sendEditMessageResponse(chatId, data, messageId);
-        } else if (data.contains("DeleteFileButtonPressed")) {
+        } else if (data.contains("DeleteFileButtonPressed") || data.contains("FilesDelAdm")) {
             sendEditMessageResponse(chatId, data, messageId);
-        }else if (data.contains("File")) {
+        } else if (data.contains("File")) {
             deleteMessage(chatId, messageId);
             checkMessageBeforeResponse(chatId, data);
         } else {

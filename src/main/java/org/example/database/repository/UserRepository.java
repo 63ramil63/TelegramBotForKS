@@ -7,6 +7,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class UserRepository {
@@ -14,12 +15,12 @@ public class UserRepository {
     private static final String tableName = "users";
 
     private static final String GET_USER = "SELECT UserName FROM " +  tableName + " WHERE ChatId=?";
-    private static final String GET_FILE_PATH = "SELECT FilePath FROM " + tableName + " WHERE ChatId=?";
+    private static final String GET_FILE_PATH = "SELECT Folder FROM " + tableName + " WHERE ChatId=?";
     private static final String GET_GROUP_ID = "SELECT GroupId FROM " + tableName + " WHERE ChatId=?";
-    private static final String GET_CAN_ADD_FOLDER = "SELECT CanADDFolder FROM " + tableName + " WHERE ChatId=?";
+    private static final String GET_CAN_ADD_FOLDER = "SELECT CanAddFolder FROM " + tableName + " WHERE ChatId=?";
     private static final String ADD_USER = "INSERT INTO " + tableName + " (ChatId) values (?)";
     private static final String UPDATE_GROUP_ID = "UPDATE " + tableName + " SET GroupId=? WHERE ChatId=?";
-    private static final String UPDATE_FILE_PATH = "UPDATE " + tableName + " SET FilePath=? WHERE ChatId=?";
+    private static final String UPDATE_FILE_PATH = "UPDATE " + tableName + " SET Folder=? WHERE ChatId=?";
     private static final String UPDATE_CAN_ADD_FOLDER = "UPDATE " + tableName + " SET CanAddFolder=? WHERE ChatId=?";
     private static final String UPDATE_USER_NAME = "UPDATE " + tableName + " SET UserName=? WHERE ChatId=?";
     private static final String GET_ALL_CHAT_ID = "SELECT ChatId FROM " + tableName;
@@ -134,7 +135,7 @@ public class UserRepository {
                 System.out.println("Execute update error");
             }
         } catch (SQLException e) {
-            System.err.println("Error (UserRepositoryClass (method executeSQLUpdate())) " + e + "\n " + sql);
+            System.err.println("Error (UserRepositoryClass (method executeSQLUpdate())) " + e + "\n " + sql + " "  + List.of(params));
         }
     }
 
