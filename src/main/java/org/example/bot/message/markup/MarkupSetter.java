@@ -4,6 +4,8 @@ import org.example.bot.TBot;
 import org.example.bot.message.markup.button.ButtonSetter;
 import org.example.controller.UserController;
 import org.example.database.repository.FileTrackerRepository;
+import org.example.database.repository.GroupRepository;
+import org.example.database.repository.LinksRepository;
 import org.example.files.FilesController;
 import org.example.site.WebSite;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
@@ -18,6 +20,9 @@ public class MarkupSetter {
     private final FilesController filesController;
     private final FileTrackerRepository fileTrackerRepository;
     private final UserController userController;
+
+    private final LinksRepository linksRepository = new LinksRepository();
+    private final GroupRepository groupRepository = new GroupRepository();
 
     private static InlineKeyboardButton backButton;
 
@@ -79,10 +84,12 @@ public class MarkupSetter {
         //создание кнопки и установка текста и возвращаемого значения при нажатии
         InlineKeyboardButton lessonButton = ButtonSetter.setButton("Расписание", "LessonButtonPressed");
         InlineKeyboardButton fileButton = ButtonSetter.setButton("Файлы", "FileButtonPressed");
+        InlineKeyboardButton linksButton = ButtonSetter.setButton("Ссылки", "LinksButtonPressed");
 
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
         //добавляем ряд кнопок в клавиатуру
-        keyboard.add(ButtonSetter.setRow(fileButton, lessonButton));
+        keyboard.add(ButtonSetter.setRow(lessonButton));
+        keyboard.add(ButtonSetter.setRow(fileButton, linksButton));
 
         InlineKeyboardButton notificationButton = ButtonSetter.setButton("Объявления", "GetNotification");
         keyboard.add(ButtonSetter.setRow(notificationButton));
@@ -130,6 +137,7 @@ public class MarkupSetter {
         return markup;
     }
 
+    // Задание клавиатуры для выбора папки, из которой будут удаляться файлы
     private InlineKeyboardMarkup setSelectFolderToDeleteFilesByAdmin() {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
@@ -145,8 +153,7 @@ public class MarkupSetter {
         return markup;
     }
 
-
-
+    // Задание клавиатуры для удаления файлов админом
     private InlineKeyboardMarkup setDeleteFilesFromFolderByAdm(String folder) {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
@@ -162,6 +169,7 @@ public class MarkupSetter {
         return markup;
     }
 
+    // Проверка является ли пользователь админом и последующие шаги
     private InlineKeyboardMarkup setDeleteFilesMarkup(String key) {
         if (key.contains("DeleteFileButtonPressed")) {
             long chatId = Long.parseLong(key.replaceAll("DeleteFileButtonPressed", ""));
@@ -177,12 +185,31 @@ public class MarkupSetter {
         return getBasicMarkup(MarkupKey.MainMenu);
     }
 
+    private InlineKeyboardMarkup setLinksMainMarkup() {
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+        List<String> groups = groupRepository.getAllGroups();
+        for (String group : groups) {
+            InlineKeyboardButton button = ButtonSetter.setButton(group, group + "EduGroup");
+            keyboard.add(ButtonSetter.setRow(button));
+        }
+        keyboard.add(ButtonSetter.setRow(backButton));
+        markup.setKeyboard(keyboard);
+        return markup;
+    }
+
+    private InlineKeyboardMarkup setLinksFromGroup(String key) {
+        return null;
+    }
+
     public InlineKeyboardMarkup getChangeableMarkup(String key) {
         if (key.contains("Folder")) {
             key = key.replaceAll("Folder$", "");
             return filesController.getFilesFromFolderMarkup(key);
         } else if (key.equals("FileButtonPressed")) {
             return filesController.getFoldersFromDatabaseMarkup();
+        } else if (key.equals("LinksMainMarkup")) {
+            return setLinksMainMarkup();
         } else if (key.contains("DeleteFileButtonPressed") || key.contains("FilesDelAdm")) {
             return setDeleteFilesMarkup(key);
         } else if (key.contains("Year")) {
@@ -193,6 +220,8 @@ public class MarkupSetter {
                 savedChangeableMarkup.put("Year", markup);
             }
             return savedChangeableMarkup.get("Year");
+        } else if (key.contains("EduGroup")) {
+            return setLinksFromGroup(key);
         } else if (key.contains("Group")) {
             if (!savedChangeableMarkup.containsKey(key)) {
                 String num = key.replace("Group", "");

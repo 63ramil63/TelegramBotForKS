@@ -520,6 +520,17 @@ public class TBot extends TelegramLongPollingBot {
                 }
                 return;
             }
+            case "LinksButtonPressed" -> {
+                message = setEditMessageWithoutMarkup(chatId, "Выберите группу", messageId);
+                message.setReplyMarkup(markupSetter.getChangeableMarkup("LinksMainMarkup"));
+                //todo сделать таблицу с группами и сохраненными ссылками, и создать саму таблицу
+                try {
+                   execute(message);
+                } catch (TelegramApiException e) {
+                    System.err.println("Error (TBotClass (method sendEditMessageResponse(LinksButtonPressed))) " + e);
+                }
+                return;
+            }
             case "SimpleError" -> {
                 message = setEditMessageWithoutMarkup(chatId, "Произошла неожиданная ошибка", messageId);
                 message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
