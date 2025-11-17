@@ -96,5 +96,6 @@ public class TableBuilder {
         executeSQL(CREATE_FILES_HISTORY_SQL, "FILES HISTORY");
         executeSQL(CREATE_ADMINS_TABLE_SQL, "ADMINS");
         executeSQL(CREATE_LINKS_TABLE_SQL, "LINKS TABLE");
+        executeSQL(CREATE_GROUP_TABLES_SQL, "GROUPS TABLE");
     }
 }
