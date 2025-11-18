@@ -233,7 +233,7 @@ public class TBot extends TelegramLongPollingBot {
                 }
             }
         }
-        if (data.contains("File")) {
+        if (data.endsWith("File")) {
             MessageWithDocBuilder message = new MessageWithDocBuilder(chatId, data);
             SendDocument sendDocument = message.getMessage();
             if (adminRepository.getAdmin(userRepository.getUserName(chatId))) {
@@ -523,11 +523,11 @@ public class TBot extends TelegramLongPollingBot {
             case "LinksButtonPressed" -> {
                 message = setEditMessageWithoutMarkup(chatId, "Выберите группу", messageId);
                 message.setReplyMarkup(markupSetter.getChangeableMarkup("LinksMainMarkup"));
-                //todo сделать таблицу с группами и сохраненными ссылками, и создать саму таблицу
                 try {
                    execute(message);
                 } catch (TelegramApiException e) {
                     System.err.println("Error (TBotClass (method sendEditMessageResponse(LinksButtonPressed))) " + e);
+                    sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
                 return;
             }
@@ -543,7 +543,7 @@ public class TBot extends TelegramLongPollingBot {
             }
         }
 
-        if (data.contains("FilesDelAdm")) {
+        if (data.endsWith("FilesDelAdm")) {
             message = setEditMessageWithoutMarkup(chatId, "Выберите файл, который хотите удалить", messageId);
             message.setReplyMarkup(markupSetter.getChangeableMarkup(data));
             System.out.println("data : " + data);
@@ -552,7 +552,7 @@ public class TBot extends TelegramLongPollingBot {
             } catch (TelegramApiException e) {
                 System.err.println("Error (TBotClass (method sendEditMessageResponse(FilesDelAdm))) " + e);
             }
-        } else if (data.contains("Del")) {
+        } else if (data.endsWith("Del")) {
             String correctPath = data.replaceAll("Del$", "");
             try {
                 filesController.deleteFile(correctPath);
@@ -574,7 +574,7 @@ public class TBot extends TelegramLongPollingBot {
                 System.err.println("Error (TBotClass (method sendEditMessageResponse(Del))) " + e);
                 sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
-        } else if (data.contains("Folder")) {
+        } else if (data.endsWith("Folder")) {
             // Установка пути у пользователя
             String filePath = data.replaceAll("Folder$", "");
             // Установка нового пути пользователя
@@ -652,7 +652,7 @@ public class TBot extends TelegramLongPollingBot {
         //удаление статуса создания папки
         userRepository.updateCanAddFolder(chatId, (byte) 0);
 
-        String callbackQuery = update.getCallbackQuery().getData();
+        String callbackQuery = update.getCallbackQuery().getData().trim();
 
         int messageId = update.getCallbackQuery().getMessage().getMessageId();
 
