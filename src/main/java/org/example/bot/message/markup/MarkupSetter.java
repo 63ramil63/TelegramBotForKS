@@ -25,12 +25,14 @@ public class MarkupSetter {
     private final GroupRepository groupRepository = new GroupRepository();
 
     private static InlineKeyboardButton backButton;
+    private static InlineKeyboardButton addLinkButton;
 
     public MarkupSetter(FilesController filesController, FileTrackerRepository fileTrackerRepository, UserController userController) {
         this.filesController = filesController;
         this.fileTrackerRepository = fileTrackerRepository;
         this.userController = userController;
         backButton = ButtonSetter.setButton("Назад", "BackButtonPressed");
+        addLinkButton = ButtonSetter.setButton("Добавить ссылку", "AddNewLink");
     }
 
     private final ConcurrentHashMap<MarkupKey, InlineKeyboardMarkup> savedBasicMarkup = new ConcurrentHashMap<>();
@@ -193,13 +195,23 @@ public class MarkupSetter {
             InlineKeyboardButton button = ButtonSetter.setButton(group, group + "EduGroup");
             keyboard.add(ButtonSetter.setRow(button));
         }
-        keyboard.add(ButtonSetter.setRow(backButton));
+        keyboard.add(ButtonSetter.setRow(backButton, addLinkButton));
         markup.setKeyboard(keyboard);
         return markup;
     }
 
     private InlineKeyboardMarkup setLinksFromGroup(String key) {
-        return null;
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+        String group = key.replace("GroupForLinks", "");
+        List<String> links = linksRepository.getAllLinksByGroupName(group);
+        for (String linkName : links) {
+            InlineKeyboardButton button = ButtonSetter.setButton(linkName, linkName + "LinkN");
+            keyboard.add(ButtonSetter.setRow(button));
+        }
+        keyboard.add(ButtonSetter.setRow(backButton, addLinkButton));
+        markup.setKeyboard(keyboard);
+        return markup;
     }
 
     public InlineKeyboardMarkup getChangeableMarkup(String key) {
@@ -220,7 +232,7 @@ public class MarkupSetter {
                 savedChangeableMarkup.put("Year", markup);
             }
             return savedChangeableMarkup.get("Year");
-        } else if (key.contains("EduGroup")) {
+        } else if (key.contains("GroupForLinks")) {
             return setLinksFromGroup(key);
         } else if (key.contains("Group")) {
             if (!savedChangeableMarkup.containsKey(key)) {
