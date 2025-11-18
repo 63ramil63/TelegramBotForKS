@@ -13,8 +13,8 @@ public class LinksRepository {
     private static final Database database = Database.getInstance();
     private static final String tableName = "links";
 
-    private static final String GET_ALL_LINKS_BY_GROUP_NAME = "SELECT Link FROM " + tableName + " WHERE GroupName = ?";
-    private static final String GET_ALL_LINKS_BY_USERS_CHAT_ID = "SELECT Link FROM " + tableName + " WHERE UsersChatId = ?";
+    private static final String GET_ALL_LINKS_BY_GROUP_NAME = "SELECT LinkName FROM " + tableName + " WHERE GroupName = ?";
+    private static final String GET_ALL_LINKS_BY_USERS_CHAT_ID = "SELECT LinkName FROM " + tableName + " WHERE UsersChatId = ?";
     private static final String GET_LINK_BY_LINK_NAME_AND_GROUP = "SELECT Link FROM " + tableName + " WHERE LinkName = ? AND GroupName = ?";
     private static final String ADD_NEW_LINK = "INSERT INTO link (LinkName, GroupName, Link, UsersChatId) values (?, ?, ?, ?)";
     
