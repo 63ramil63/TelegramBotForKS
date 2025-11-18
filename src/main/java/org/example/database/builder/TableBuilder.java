@@ -25,6 +25,7 @@ public class TableBuilder {
                 Folder NVARCHAR(15) NULL,
                 CanAddFolder TINYINT DEFAULT 0,
                 GroupId VARCHAR(4) NULL,
+                GroupForLinks NVARCHAR(10) NULL,
                 PRIMARY KEY (ChatId))
                 """;
         CREATE_FOLDER_TRACKING_SQL = """
