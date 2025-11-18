@@ -192,7 +192,7 @@ public class MarkupSetter {
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
         List<String> groups = groupRepository.getAllGroups();
         for (String group : groups) {
-            InlineKeyboardButton button = ButtonSetter.setButton(group, group + "EduGroup");
+            InlineKeyboardButton button = ButtonSetter.setButton(group, group + "GroupForLinks");
             keyboard.add(ButtonSetter.setRow(button));
         }
         keyboard.add(ButtonSetter.setRow(backButton, addLinkButton));
