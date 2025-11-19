@@ -8,10 +8,7 @@ import org.example.bot.message.MessageWithDocBuilder;
 import org.example.bot.message.markup.MarkupKey;
 import org.example.bot.message.markup.MarkupSetter;
 import org.example.controller.UserController;
-import org.example.database.repository.AdminRepository;
-import org.example.database.repository.FileTrackerRepository;
-import org.example.database.repository.FolderRepository;
-import org.example.database.repository.UserRepository;
+import org.example.database.repository.*;
 import org.example.files.FilesController;
 import org.example.files.exception.FileSizeException;
 import org.example.files.exception.IncorrectExtensionException;
@@ -30,6 +27,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.*;
@@ -45,6 +43,8 @@ public class TBot extends TelegramLongPollingBot {
     private AdminRepository adminRepository;
     private UserController userController;
     private FolderRepository folderRepository;
+    private GroupRepository groupRepository;
+    private LinksRepository linksRepository;
 
     private String bot_token;
     private String bot_name;
@@ -102,7 +102,9 @@ public class TBot extends TelegramLongPollingBot {
             scheduler.scheduleAtFixedRate(scheduleCache::clearExpiredCache, duration, duration, TimeUnit.MINUTES);
         }
         userController = new UserController(userRepository, adminRepository);
-        markupSetter = new MarkupSetter(filesController, fileTrackerRepository, userController);
+        groupRepository = new GroupRepository();
+        linksRepository = new LinksRepository();
+        markupSetter = new MarkupSetter(filesController, fileTrackerRepository, userController, linksRepository, groupRepository);
         userController.addAdminsFromProperty(adminsFromProperty);
         filesController.synchronizeFoldersWithDatabase();
         filesController.synchronizeFilesWithDatabase();
@@ -587,6 +589,14 @@ public class TBot extends TelegramLongPollingBot {
             } catch (TelegramApiException e) {
                 System.err.println("Error (TBotClass (method sendEditMessage (Folder))) " + e);
                 sendEditMessageResponse(chatId, "SimpleError", messageId);
+            }
+        } else if (data.endsWith("GroupForLinks")) {
+            message = setEditMessageWithoutMarkup(chatId, "Выберите нужную вам ссылку", messageId);
+            markupSetter.getChangeableMarkup(data);
+            try {
+                execute(message);
+            } catch (TelegramApiException e) {
+                System.err.println("Error (TBotClass (method sendEditMessageResponse(GroupForLinks))) \n data: " + data + " \n" + e);
             }
         } else if (data.contains("Year")) {
             message = setEditMessageWithoutMarkup(chatId, "Выберите вашу группу", messageId);

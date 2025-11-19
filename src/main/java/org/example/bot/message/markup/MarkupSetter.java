@@ -21,16 +21,19 @@ public class MarkupSetter {
     private final FileTrackerRepository fileTrackerRepository;
     private final UserController userController;
 
-    private final LinksRepository linksRepository = new LinksRepository();
-    private final GroupRepository groupRepository = new GroupRepository();
+    private final LinksRepository linksRepository;
+    private final GroupRepository groupRepository;
 
     private static InlineKeyboardButton backButton;
     private static InlineKeyboardButton addLinkButton;
 
-    public MarkupSetter(FilesController filesController, FileTrackerRepository fileTrackerRepository, UserController userController) {
+    public MarkupSetter(FilesController filesController, FileTrackerRepository fileTrackerRepository,
+                        UserController userController, LinksRepository linksRepository, GroupRepository groupRepository) {
         this.filesController = filesController;
         this.fileTrackerRepository = fileTrackerRepository;
         this.userController = userController;
+        this.linksRepository = linksRepository;
+        this.groupRepository = groupRepository;
         backButton = ButtonSetter.setButton("Назад", "BackButtonPressed");
         addLinkButton = ButtonSetter.setButton("Добавить ссылку", "AddNewLink");
     }
@@ -220,7 +223,7 @@ public class MarkupSetter {
             return filesController.getFilesFromFolderMarkup(key);
         } else if (key.equals("FileButtonPressed")) {
             return filesController.getFoldersFromDatabaseMarkup();
-        } else if (key.equals("LinksMainMarkup")) {
+        } else if (key.equals("LinksButtonPressed")) {
             return setLinksMainMarkup();
         } else if (key.contains("DeleteFileButtonPressed") || key.contains("FilesDelAdm")) {
             return setDeleteFilesMarkup(key);
