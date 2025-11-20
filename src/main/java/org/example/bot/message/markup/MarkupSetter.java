@@ -42,10 +42,13 @@ public class MarkupSetter {
     private final ConcurrentHashMap<String, InlineKeyboardMarkup> savedChangeableMarkup = new ConcurrentHashMap<>();
 
     public InlineKeyboardMarkup getBasicMarkup(MarkupKey key) {
-        if (!checkSavedMarkup(key)) {
-            setMarkup(key);
+        if (key != MarkupKey.NONE) {
+            if (!checkSavedMarkup(key)) {
+                setMarkup(key);
+            }
+            return savedBasicMarkup.get(key);
         }
-        return savedBasicMarkup.get(key);
+        return null;
     }
 
     private boolean checkSavedMarkup(MarkupKey key) {
@@ -209,7 +212,7 @@ public class MarkupSetter {
         String group = key.replace("GroupForLinks", "");
         List<String> links = linksRepository.getAllLinksByGroupName(group);
         for (String linkName : links) {
-            InlineKeyboardButton button = ButtonSetter.setButton(linkName, linkName + "LinkN");
+            InlineKeyboardButton button = ButtonSetter.setButton(linkName, linkName + "LinkN" + group);
             keyboard.add(ButtonSetter.setRow(button));
         }
         keyboard.add(ButtonSetter.setRow(backButton, addLinkButton));

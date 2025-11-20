@@ -67,4 +67,19 @@ public class LinksRepository {
         }
         return links;
     }
+
+    public String getLinkByNameAndGroup(String linkName, String group) {
+        try (Connection connection = database.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(GET_LINK_BY_LINK_NAME_AND_GROUP)) {
+            preparedStatement.setString(1, linkName);
+            preparedStatement.setString(2, group);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getNString(1);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error (LinksRepositoryClass (method getLinkByNameAndGroup())) " + e);
+        }
+        return null;
+    }
 }

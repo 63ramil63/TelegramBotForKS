@@ -252,6 +252,15 @@ public class TBot extends TelegramLongPollingBot {
                 System.err.println("Error (TBotClass (method sendNewMessageResponse())) " + e);
                 checkMessageBeforeResponse(chatId, "SimpleError");
             }
+        } else if (data.endsWith("LinkN")) {
+            int index = data.lastIndexOf("LinkN");
+            String link = data.substring(index + "LinkN".length());
+            sendMessage = setSendMessage(chatId, "Вот ваша ссылка \n" + link, MarkupKey.NONE);
+            try {
+                execute(sendMessage);
+            } catch (TelegramApiException e) {
+                System.err.println("Error (TBotClass (method sendNewMessageResponse())) " + e);
+            }
         } else if (FilesController.checkFileName(data)) {
             if (userRepository.getCanAddFolder(chatId)) {
                 String folderName = data.trim();
@@ -598,6 +607,13 @@ public class TBot extends TelegramLongPollingBot {
             } catch (TelegramApiException e) {
                 System.err.println("Error (TBotClass (method sendEditMessageResponse(GroupForLinks))) \n data: " + data + " \n" + e);
             }
+        } else if (data.contains("LinkN")) {
+            int index = data.lastIndexOf("LinkN");
+            String group = data.substring(index + "LinkN".length());
+            String linkName = data.substring(0, index);
+            String link = linksRepository.getLinkByNameAndGroup(linkName, group) + "LinkN";
+            sendNewMessageResponse(chatId, link + "LinkN");
+            checkMessageBeforeResponse(chatId, "/start");
         } else if (data.contains("Year")) {
             message = setEditMessageWithoutMarkup(chatId, "Выберите вашу группу", messageId);
 
