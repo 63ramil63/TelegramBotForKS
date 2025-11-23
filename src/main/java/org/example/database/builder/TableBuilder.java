@@ -24,6 +24,8 @@ public class TableBuilder {
                 UserName NVARCHAR(64) NULL,
                 Folder NVARCHAR(15) NULL,
                 CanAddFolder TINYINT DEFAULT 0,
+                CanAddGroup TINYINT DEFAULT 0,
+                CanAddLink TINYINT DEFAULT 0,
                 GroupId VARCHAR(4) NULL,
                 GroupForLinks NVARCHAR(10) NULL,
                 PRIMARY KEY (ChatId))
@@ -64,9 +66,8 @@ public class TableBuilder {
                 PRIMARY KEY(Id))
                 """;
         CREATE_GROUP_TABLES_SQL = """
-                CREATE TABLE IF NOT EXISTS GROUPS(
-                GroupName NOT NULL UNIQUE,
-                PRIMARY KEY(GroupName)
+                CREATE TABLE IF NOT EXISTS edu_groups(
+                GroupName NVARCHAR(10) NOT NULL UNIQUE
                 )
                 """;
     }

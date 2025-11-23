@@ -154,6 +154,7 @@ public class FilesController {
         try {
             if (Files.isDirectory(Path.of(this.path))) {
                 Files.createDirectory(Path.of(this.path + text));
+                folderRepository.addFolder(text);
             }
         } catch (IOException e) {
             System.err.println("Error: FilesControllerClass (method addFolder()) " + e);

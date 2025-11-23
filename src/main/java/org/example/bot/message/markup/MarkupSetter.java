@@ -12,6 +12,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -26,6 +27,7 @@ public class MarkupSetter {
 
     private static InlineKeyboardButton backButton;
     private static InlineKeyboardButton addLinkButton;
+    private static InlineKeyboardButton addNewGroupButton;
 
     public MarkupSetter(FilesController filesController, FileTrackerRepository fileTrackerRepository,
                         UserController userController, LinksRepository linksRepository, GroupRepository groupRepository) {
@@ -35,20 +37,18 @@ public class MarkupSetter {
         this.linksRepository = linksRepository;
         this.groupRepository = groupRepository;
         backButton = ButtonSetter.setButton("Назад", "BackButtonPressed");
-        addLinkButton = ButtonSetter.setButton("Добавить ссылку", "AddNewLink");
+        addLinkButton = ButtonSetter.setButton("Добавить ссылку", "AddLinkButtonPressed");
+        addNewGroupButton = ButtonSetter.setButton("Добавить группу", "AddGroupButtonPressed");
     }
 
     private final ConcurrentHashMap<MarkupKey, InlineKeyboardMarkup> savedBasicMarkup = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, InlineKeyboardMarkup> savedChangeableMarkup = new ConcurrentHashMap<>();
 
     public InlineKeyboardMarkup getBasicMarkup(MarkupKey key) {
-        if (key != MarkupKey.NONE) {
-            if (!checkSavedMarkup(key)) {
-                setMarkup(key);
-            }
-            return savedBasicMarkup.get(key);
+        if (!checkSavedMarkup(key)) {
+            setMarkup(key);
         }
-        return null;
+        return savedBasicMarkup.get(key);
     }
 
     private boolean checkSavedMarkup(MarkupKey key) {
@@ -59,7 +59,21 @@ public class MarkupSetter {
         switch (key) {
             case MarkupKey.MainMenu -> savedBasicMarkup.put(key, getMainMenuButtons());
             case MarkupKey.LessonMenu -> savedBasicMarkup.put(key, getLessonMenuButtons());
+            case MarkupKey.ONLY_BACK -> savedBasicMarkup.put(key, getOnlyCancelButton());
+            case MarkupKey.NONE -> savedBasicMarkup.put(key, getNoneMarkup());
         }
+    }
+
+    private InlineKeyboardMarkup getNoneMarkup() {
+        return new InlineKeyboardMarkup();
+    }
+
+    private InlineKeyboardMarkup getOnlyCancelButton() {
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+        keyboard.add(ButtonSetter.setRow(backButton));
+        markup.setKeyboard(keyboard);
+        return markup;
     }
 
     private InlineKeyboardMarkup getLessonMenuButtons() {
@@ -201,7 +215,7 @@ public class MarkupSetter {
             InlineKeyboardButton button = ButtonSetter.setButton(group, group + "GroupForLinks");
             keyboard.add(ButtonSetter.setRow(button));
         }
-        keyboard.add(ButtonSetter.setRow(backButton, addLinkButton));
+        keyboard.add(ButtonSetter.setRow(backButton, addNewGroupButton));
         markup.setKeyboard(keyboard);
         return markup;
     }
