@@ -54,7 +54,7 @@ public class WebSite {
             }
             return groups;
         } catch (IOException e) {
-            System.err.println("Error WebSiteClass (method getGroups()) " + e);
+            System.err.printf("Error WebSiteClass (method getGroups(num : %d))%n%s%n", num, e);
         }
         return null;
     }
@@ -146,7 +146,7 @@ public class WebSite {
             }
             return "Нет расписания на нужную дату \n https://lk.ks.psuti.ru/?mn=2&obj=" + groupId;
         } catch (IOException e) {
-            System.err.println("Error WebSiteClass (method getSchedule()) " + e);
+            System.err.printf("Error WebSiteClass (method getSchedule(day : %s, groupId : %s))%n%s%n", day, groupId, e);
         }
         return "Not found";
     }

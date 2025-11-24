@@ -27,9 +27,9 @@ public class LinksRepository {
             preparedStatement.setLong(4, chatId);
             int rowsAffected = preparedStatement.executeUpdate();
             if (rowsAffected > 0) {
-                System.out.println("New link added, linkName: " + linkName + ", user's chat id is: " + chatId);
+                System.out.printf("New link added, linkName: %s, user's chat id is: %d%n", linkName, chatId);
             } else {
-                System.out.println("Failed to add new link, linkName: " + linkName + ", user's chat id is: " + chatId);
+                System.out.printf("Failed to add new link, linkName: %s, user's chat id is: %d%n", linkName, chatId);
             }
         } catch (SQLException e) {
             System.err.println("Error (LinksRepositoryClass (method addLink())) " + e);
@@ -47,7 +47,7 @@ public class LinksRepository {
             }
             return links;
         } catch (SQLException e) {
-            System.err.println("Error (LinksRepositoryClass (method getAllLinksByGroupName())) " + e);
+            System.err.printf("Error (LinksRepositoryClass (method getAllLinksByGroupName(data : %s))) %n" + e);
         }
         return links;
     }
@@ -63,7 +63,7 @@ public class LinksRepository {
             }
             return links;
         } catch (SQLException e) {
-            System.err.println("Error (LinksRepositoryClass (method getAllLinksByUsersChatId())) " + e);
+            System.err.printf("Error (LinksRepositoryClass (method getAllLinksByUsersChatId(data : %d))) %n%s%n", chatId, e);
         }
         return links;
     }
@@ -78,7 +78,7 @@ public class LinksRepository {
                 return resultSet.getNString(1);
             }
         } catch (SQLException e) {
-            System.err.println("Error (LinksRepositoryClass (method getLinkByNameAndGroup())) " + e);
+            System.err.printf("Error (LinksRepositoryClass (method getLinkByNameAndGroup(linkName : %s, group : %s)))%n%s%n", linkName, group, e);
         }
         return null;
     }

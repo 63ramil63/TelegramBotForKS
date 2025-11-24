@@ -19,18 +19,14 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.Document;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.*;
@@ -87,7 +83,7 @@ public class TBot extends TelegramLongPollingBot {
             maxFileSize = Integer.parseInt(properties.getProperty("fileMaxSize"));
             adminsFromProperty = List.of(properties.getProperty("admins").split(","));
         } catch (IOException e) {
-            System.err.println("Error (TBotClass (method loadConfig())) " + e);
+            System.err.printf("Error (TBotClass (method loadConfig())) %s", e);
             System.exit(505);
         }
     }
@@ -131,7 +127,7 @@ public class TBot extends TelegramLongPollingBot {
     private SendMessage setSendMessage(long chatId, String data, MarkupKey key) {
         MessageBuilder messageBuilder = new MessageBuilder(data, chatId);
         SendMessage sendMessage = messageBuilder.getMessage();
-        if (key != null) {
+        if (key != MarkupKey.NONE) {
             sendMessage.setReplyMarkup(markupSetter.getBasicMarkup(key));
         }
         return sendMessage;
@@ -164,7 +160,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
-                    System.err.println("Error (TBotClass (method sendNewMessageResponse(case 'DocumentSaved'))) " + e);
+                    System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
                     checkMessageBeforeResponse(chatId, "SimpleError");
                 }
                 return;
@@ -174,7 +170,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
-                    System.err.println("Error (TBotClass (method sendNewMessageResponse(case 'IncorrectFileExtension'))) " + e);
+                    System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
                     checkMessageBeforeResponse(chatId, "SimpleError");
                 }
                 return;
@@ -184,7 +180,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
-                    System.err.println("Error (TBotClass (method sendNewMessageResponse(case 'FileTooBig'))) " + e);
+                    System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
                     checkMessageBeforeResponse(chatId, "SimpleError");
                 }
                 return;
@@ -196,8 +192,8 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
+                    System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
                     checkMessageBeforeResponse(chatId, "SimpleError");
-                    System.err.println("Error (TBotClass (method sendNewMessageResponse(case 'FolderAdded'))) " + e);
                 }
                 return;
             }
@@ -206,7 +202,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
-                    System.err.println("Error (TBotClass (method sendNewMessageResponse(case 'SimpleError'))) " + e);
+                    System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
                 }
                 return;
             }
@@ -215,7 +211,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
-                    System.err.println("Error (TBotClass (method sendNewMessageResponse(case 'AdminError'))) " + e);
+                    System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
                 }
                 return;
             }
@@ -224,7 +220,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
-                    System.err.println("Error (TBotClass (method sendNewMessageResponse(case 'AdminAdded'))) " + e);
+                    System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
                 }
                 return;
             }
@@ -233,7 +229,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
-                    System.err.println("Error (TBotClass (method sendNewMessageResponse(case 'PathCheckError'))) " + e);
+                    System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
                 }
                 return;
             }
@@ -242,7 +238,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
-                    System.err.println("Error (TBotClass (method sendNewMessageResponse(case 'InvalidFileName'))) " + e);
+                    System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
                 }
             }
         }
@@ -260,17 +256,17 @@ public class TBot extends TelegramLongPollingBot {
                 execute(sendDocument);
                 checkMessageBeforeResponse(chatId, "/start");
             } catch (TelegramApiException e) {
-                System.err.println("Error (TBotClass (method sendNewMessageResponse())) " + e);
+                System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
                 checkMessageBeforeResponse(chatId, "SimpleError");
             }
         } else if (data.endsWith("LinkN")) {
             int index = data.lastIndexOf("LinkN");
             String link = data.substring(0, index);
-            sendMessage = setSendMessage(chatId, "Вот ваша ссылка \n" + link, null);
+            sendMessage = setSendMessage(chatId, "Вот ваша ссылка \n" + link, MarkupKey.NONE);
             try {
                 execute(sendMessage);
             } catch (TelegramApiException e) {
-                System.err.println("Error (TBotClass (method sendNewMessageResponse())) " + e);
+                System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
             }
         } else if (isValidLinkFormat(data.trim())) {
             if (userRepository.getCanAddLink(chatId)) {
@@ -306,7 +302,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
-                    System.err.println("Error (TBotClass (method sendNewMessageResponse(case /start))) " + e);
+                    System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e);
                     checkMessageBeforeResponse(chatId, "SimpleError");
                 }
                 return;
@@ -315,6 +311,7 @@ public class TBot extends TelegramLongPollingBot {
         if (data.contains("/sendToAll")) {
             if (!adminRepository.getAdmin(userRepository.getUserName(chatId))) {
                 checkMessageBeforeResponse(chatId, "AdminError");
+                System.out.printf("Trying to access admin command without admin rights, chatId : %d%n", chatId);
                 return;
             }
             String text = data.replaceAll("/sendToAll", "");
@@ -327,6 +324,7 @@ public class TBot extends TelegramLongPollingBot {
         } else if (data.contains("/sendNotification")) {
             if (!adminRepository.getAdmin(userRepository.getUserName(chatId))) {
                 checkMessageBeforeResponse(chatId, "AdminError");
+                System.out.printf("Trying to access admin command without admin rights, chatId : %d%n", chatId);
                 return;
             }
             String text = data.replaceAll("/sendNotification", "");
@@ -340,6 +338,7 @@ public class TBot extends TelegramLongPollingBot {
             String adminRole = adminRepository.getAdminRole(userRepository.getUserName(chatId));
             if (!isAdmin || !adminRole.equals(AdminRole.Main.toString())) {
                 checkMessageBeforeResponse(chatId, "AdminError");
+                System.out.printf("Trying to access admin command without admin rights, chatId : %d%n", chatId);
                 return;
             }
             String adminUsername = data.replaceAll("/addAdmin", "").trim();
@@ -382,7 +381,7 @@ public class TBot extends TelegramLongPollingBot {
             String folder = target.substring(0, delimiterIndex);
             String file = target.substring(delimiterIndex + 1);
             fileTrackerRepository.putFileInfo(chatId, folder, file);
-            System.out.println("Сохранен документ от пользователя " + chatId + "\n / Документ: " + document.getFileName());
+            System.out.printf("Сохранен документ от пользователя %d%nДокумент: %s%n", chatId, document.getFileName());
             checkMessageBeforeResponse(chatId, "DocumentSaved");
         } else {
             checkMessageBeforeResponse(chatId, "SimpleError");
@@ -406,16 +405,16 @@ public class TBot extends TelegramLongPollingBot {
         try {
             saveDocument(update, fileName, userPath, chatId);
         } catch (IncorrectExtensionException e) {
-            System.err.println("Error (TBotClass (method updateHasDocument(IncorrectExtensionException))) " + e);
+            System.err.printf("Error (TBotClass (method updateHasDocument(IncorrectExtensionException))) chatId : %d %n%s%n", chatId, e.getMessage());
             checkMessageBeforeResponse(chatId, "IncorrectFileExtension");
         } catch (FileSizeException e) {
-            System.err.println("Error (TBotClass (method updateHasDocument(FileSizeException))) " + e);
+            System.err.printf("Error (TBotClass (method updateHasDocument(FileSizeException))) chatId : %d %n%s%n", chatId, e.getMessage());
             checkMessageBeforeResponse(chatId, "FileTooBig");
         } catch (TelegramApiException | IOException e) {
-            System.err.println("Error (TBotClass (method updateHasDocument(TelegramApi/IOException))) " + e);
+            System.err.printf("Error (TBotClass (method updateHasDocument(TelegramApi/IOException))) chatId : %d %n%s%n", chatId, e.getMessage());
             checkMessageBeforeResponse(chatId, "SimpleError");
         } catch (InvalidCallbackDataException e) {
-            System.err.println("Error (TBotClass (method updateHasDocument(InvalidCallbackDataException))) " + e);
+            System.err.printf("Error (TBotClass (method updateHasDocument(InvalidCallbackDataException))) chatId : %d %n%s%n", chatId, e.getMessage());
             checkMessageBeforeResponse(chatId, "InvalidFileName");
         }
     }
@@ -434,7 +433,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(message);
                 } catch (TelegramApiException e) {
-                    System.err.println("The new text equals with old: Error (TBotClass (method sendEditMessageResponse(Help))) " + e);
+                    System.err.printf("The new text equals with old: Error (TBotClass (method sendEditMessageResponse(Help))) %s%n", e.getMessage());
                 }
                 return;
             }
@@ -444,7 +443,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(message);
                 } catch (TelegramApiException e) {
-                    System.err.println("Error (TBotClass (method sendEditMessageResponse(LessonButtonPressed))) " + e);
+                    System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                     sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
                 return;
@@ -455,7 +454,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(message);
                 } catch (TelegramApiException e) {
-                    System.err.println("Error (TBotClass (method sendEditMessageResponse(BackButtonPressed))) " + e);
+                    System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                     sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
                 return;
@@ -466,7 +465,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(message);
                 } catch (TelegramApiException e) {
-                    System.err.println("Error (TBotClass (method sendEditMessage (FileButtonPressed))) " + e);
+                    System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                     sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
             }
@@ -477,7 +476,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(message);
                 } catch (TelegramApiException e) {
-                    System.err.println("Error (TBotClass (method sendEditMessage (AddFolderButtonPressed))) " + e);
+                    System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                     sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
                 return;
@@ -489,7 +488,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(message);
                 } catch (TelegramApiException e) {
-                    System.err.println("Error (TBotClass (method sendEditMessage (AddGroupButtonPressed())) " + e);
+                    System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                     sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
                 return;
@@ -502,7 +501,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(message);
                 } catch (TelegramApiException e) {
-                    System.err.println("Error (TBotClass (method AddLinkButtonPressed())) " + e);
+                    System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                     sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
                 return;
@@ -545,7 +544,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(message);
                 } catch (TelegramApiException e) {
-                    System.err.println("Error (TBotClass (method sendEditMessageResponse(SelectYearButtonsPressed))) " + e);
+                    System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s", data, chatId, e);
                     sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
                 return;
@@ -566,7 +565,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(message);
                 } catch (TelegramApiException e) {
-                    System.err.println("Error (TBotClass (method sendEditMessageResponse(DeleteFileButtonPressed)))");
+                    System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                     sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
                 return;
@@ -577,7 +576,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     execute(message);
                 } catch (TelegramApiException e) {
-                    System.err.println("Error (TBotClass (method sendEditMessageResponse(SelectYearButtonsPressed))) " + e);
+                    System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                     sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
                 return;
@@ -588,7 +587,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                    execute(message);
                 } catch (TelegramApiException e) {
-                    System.err.println("Error (TBotClass (method sendEditMessageResponse(LinksButtonPressed))) " + e);
+                    System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                     sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
                 return;
@@ -611,7 +610,7 @@ public class TBot extends TelegramLongPollingBot {
             try {
                 execute(message);
             } catch (TelegramApiException e) {
-                System.err.println("Error (TBotClass (method sendEditMessageResponse(FilesDelAdm))) " + e);
+                System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
             }
         } else if (data.endsWith("Del")) {
             String correctPath = data.replaceAll("Del$", "");
@@ -632,7 +631,7 @@ public class TBot extends TelegramLongPollingBot {
                     sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
             } catch (IOException e) {
-                System.err.println("Error (TBotClass (method sendEditMessageResponse(Del))) " + e);
+                System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                 sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
         } else if (data.endsWith("Folder")) {
@@ -646,8 +645,7 @@ public class TBot extends TelegramLongPollingBot {
             try {
                 execute(message);
             } catch (TelegramApiException e) {
-                System.err.println("Error (TBotClass (method sendEditMessage (Folder))) " + e);
-                sendEditMessageResponse(chatId, "SimpleError", messageId);
+                System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);                sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
         } else if (data.endsWith("GroupForLinks")) {
             String group = data.replace("GroupForLinks", "").trim();
@@ -657,8 +655,7 @@ public class TBot extends TelegramLongPollingBot {
             try {
                 execute(message);
             } catch (TelegramApiException e) {
-                System.err.println("Error (TBotClass (method sendEditMessageResponse(GroupForLinks))) \n data: " + data + " \n" + e);
-            }
+                System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);            }
         } else if (data.contains("LinkN")) {
 
             DeleteMessageBuilder deleteMessage = new DeleteMessageBuilder(chatId, messageId);

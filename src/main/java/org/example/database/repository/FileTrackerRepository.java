@@ -47,7 +47,8 @@ public class FileTrackerRepository {
                 System.err.println("Error add file info in history  " + folder + "/" + fileName);
             }
         } catch (SQLException e) {
-            System.err.println("Error (FileTrackerRepositoryClass (method putFileInfo)) " + e);
+            System.err.printf("Error (FileTrackerRepositoryClass (method putFileInfo(chatId : %d, folder : %s, fileName : %s)))%n",
+                    chatId, folder, fileName);
         }
     }
 
@@ -66,7 +67,7 @@ public class FileTrackerRepository {
                 System.err.println("Error getFileInfo " + filePath);
             }
         } catch (SQLException e) {
-            System.err.println("Error (FileTrackerRepositoryClass (method getFileInfo)) " + e);
+            System.err.printf("Error (FileTrackerRepositoryClass (method getFileInfo(filePath : %s)))%n%s%n", filePath, e);
         }
         return 0;
     }
@@ -82,7 +83,7 @@ public class FileTrackerRepository {
             }
             return userFiles;
         } catch (SQLException e) {
-            System.err.println("Error (FileTrackerRepositoryClass (method getAllUserFiles)) " + e);
+            System.err.printf("Error (FileTrackerRepositoryClass (method getAllUserFiles(chatId : %d)))%n%s%n", chatId, e);
         }
         return null;
     }
@@ -97,7 +98,7 @@ public class FileTrackerRepository {
                 return true;
             }
         } catch (SQLException e) {
-            System.err.println("Error (FileTrackerRepositoryClass (method deleteUserFilesFromRepository())) " + e);
+            System.err.printf("Error (FileTrackerRepositoryClass (method deleteUserFilesFromRepository(folder : %s, fileName : %s)))%n%s%n", folder, fileName, e);
         }
         return false;
     }
@@ -113,7 +114,7 @@ public class FileTrackerRepository {
             }
             return files;
         } catch (SQLException e) {
-            System.err.println("Error (FileTrackerRepositoryClass (method getAllFiles())) " + e);
+            System.err.printf("Error (FileTrackerRepositoryClass (method getAllFiles(folder : %s)))%n%s%n", folder, e);
         }
         return files;
     }

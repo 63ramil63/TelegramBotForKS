@@ -92,7 +92,7 @@ public class FilesController {
                 }
             }
         } catch (IOException e) {
-            System.err.println("Error (FilesControllerClass(method checkFolders))");
+            System.err.println("Error (FilesControllerClass(method synchronizeFoldersWithDatabase()))");
         }
     }
 
@@ -102,7 +102,7 @@ public class FilesController {
         try (Stream<Path> paths = Files.list(Path.of(fullPath))) {
             paths.forEach(p -> files.add(p.getFileName().toString()));
         } catch (IOException e) {
-            System.err.println("Error (FilesControllerClass (method getFilesFromFolder())) " + e);
+            System.err.printf("Error (FilesControllerClass (method getFilesFromFolder(data : %s))) %n%s%n", files, e);
         }
         return files;
     }
@@ -157,7 +157,7 @@ public class FilesController {
                 folderRepository.addFolder(text);
             }
         } catch (IOException e) {
-            System.err.println("Error: FilesControllerClass (method addFolder()) " + e);
+            System.err.printf("Error (FilesControllerClass (method addFolder(data : %s))) %s%n", text, e);
         }
     }
 

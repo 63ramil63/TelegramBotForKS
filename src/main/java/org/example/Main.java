@@ -13,7 +13,7 @@ public class Main {
         // получаем путь в котором находится файл с конфигурацией
         propertyPath = args[0];
         if (propertyPath.isEmpty() || propertyPath == null) {
-            System.out.println("Property path cant be null");
+            System.err.println("Property path cant be null");
             System.exit(101);
         }
         TableBuilder tableBuilder = new TableBuilder();

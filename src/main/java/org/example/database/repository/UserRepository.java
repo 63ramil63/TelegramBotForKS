@@ -7,6 +7,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class UserRepository {
@@ -46,8 +47,7 @@ public class UserRepository {
             }
             resultSet.close();
         } catch (SQLException e) {
-            System.out.println(e);
-            throw new RuntimeException(e);
+            System.err.printf("Error (UserRepositoryClass (method executeSQLQuery(sql : %s, chatId : %d))) %n%s%n", sql, chatId, e);
         }
         return "";
     }
@@ -63,7 +63,7 @@ public class UserRepository {
             }
             resultSet.close();
         } catch (SQLException e) {
-            System.err.println("Error (UserRepositoryClass (method getUser()))" + e);
+            System.err.printf("Error (UserRepositoryClass (method getUser(chatId : %d))) %n%s%n", chatId, e);
         }
         return false;
     }
@@ -77,7 +77,7 @@ public class UserRepository {
                 return resultSet.getNString("UserName");
             }
         } catch (SQLException e) {
-            System.err.println("Error (UserRepositoryClass (method getUserName))");
+            System.err.printf("Error (UserRepositoryClass (method getUserName(chatId : %d))) %n%s%n", chatId, e);
         }
         return "";
     }
@@ -94,7 +94,7 @@ public class UserRepository {
         return executeSQLQuery(GET_GROUP_FOR_LINKS, chatId);
     }
 
-    public boolean executeSQLQueryWithBoolean(long chatId, String query) {
+    public boolean executeSQLQueryWithBoolean(String query, long chatId) {
         try (Connection connection = dataBaseConnection.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(query)) {
             preparedStatement.setLong(1, chatId);
@@ -109,21 +109,21 @@ public class UserRepository {
             resultSet.close();
             return false;
         } catch (SQLException e) {
-            System.err.println("Error (UserRepositoryClass (method executeSQLQueryWithBoolean())) " + e);
+            System.err.printf("Error (UserRepositoryClass (method executeSQLQueryWithBoolean(query : %s, chatId : %d))) %n%s%n", query, chatId, e);
         }
         return false;
     }
 
     public boolean getCanAddFolder(long chatId) {
-        return executeSQLQueryWithBoolean(chatId, GET_CAN_ADD_FOLDER);
+        return executeSQLQueryWithBoolean(GET_CAN_ADD_FOLDER, chatId);
     }
 
     public boolean getCanAddGroup(long chatId) {
-        return executeSQLQueryWithBoolean(chatId, GET_CAN_ADD_GROUP);
+        return executeSQLQueryWithBoolean(GET_CAN_ADD_GROUP, chatId);
     }
 
     public boolean getCanAddLink(long chatId) {
-        return executeSQLQueryWithBoolean(chatId, GET_CAN_ADD_LINK);
+        return executeSQLQueryWithBoolean(GET_CAN_ADD_LINK, chatId);
     }
 
     public List<Long> getAllUsersChatId() {
@@ -135,7 +135,7 @@ public class UserRepository {
                 chatIdArray.add(resultSet.getLong("ChatId"));
             }
         } catch (SQLException e) {
-            System.err.println("Error (UserRepositoryClass (method getAllUsersChatId))");
+            System.err.printf("Error (UserRepositoryClass (method getAllUsersChatId())) %s%n", e);
         }
         return chatIdArray;
     }
@@ -154,10 +154,10 @@ public class UserRepository {
             }
             int rowsAffected = preparedStatement.executeUpdate();
             if (rowsAffected == 0) {
-                System.out.println("Execute update error");
+                System.err.printf("Execute sql update error sql : %s %nParams: %s%n", sql, Arrays.toString(params));
             }
         } catch (SQLException e) {
-            System.err.println("Error (UserRepositoryClass (method executeSQLUpdate())) " + e + "\n " + sql + " "  + List.of(params));
+            System.err.printf("Error (UserRepositoryClass (method executeSQLUpdate(sql : %s, params : %s))) %n%s%n", sql, Arrays.toString(params), e);
         }
     }
 

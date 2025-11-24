@@ -26,7 +26,7 @@ public class FolderRepository {
                 return true;
             }
         } catch (SQLException e) {
-            System.err.println("Error FolderRepositoryClass (method addFolder()) " + e);
+            System.err.printf("Error FolderRepositoryClass (method addFolder(folderName : %s)) %n%s%n", folderName, e);
         }
         return false;
     }
@@ -40,7 +40,7 @@ public class FolderRepository {
                 return true;
             }
         } catch (SQLException e) {
-            System.err.println("Error (FolderRepositoryClass (method getFolder(String))) " + e);
+            System.err.printf("Error (FolderRepositoryClass (method getFolder(folder : %s))) %n%s%n", folder, e);
         }
         return false;
     }

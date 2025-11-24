@@ -29,7 +29,7 @@ public class AdminRepository {
             }
             return adminsChatId;
         } catch (SQLException e) {
-            System.err.println("Error (AdminRepositoryClass (method getAdmins())) " + e);
+            System.err.println("Error (AdminRepositoryClass (method getAdminsUsername())) " + e);
         }
         return null;
     }
@@ -47,7 +47,7 @@ public class AdminRepository {
                 System.out.println("Error admin with username: " + username);
             }
         } catch (SQLException e) {
-            System.err.println("Error (AdminRepositoryClass (method addAdmin())) " + username + " " + e);
+            System.err.printf("Error (AdminRepositoryClass (method addAdmin(username : %s, role : %s)))%n%s%n", username, role, e);
         }
         return false;
     }
@@ -61,7 +61,7 @@ public class AdminRepository {
                 return true;
             }
         } catch (SQLException e) {
-            System.err.println("Error (AdminRepositoryClass (method getAdmin())) username: " + username + " " + e);
+            System.err.printf("Error (AdminRepositoryClass (method getAdmin(username : %s)))%n%s%n", username, e);
         }
         return false;
     }
@@ -75,7 +75,7 @@ public class AdminRepository {
                 return resultSet.getNString(1);
             }
         } catch (SQLException e) {
-            System.err.println("Error (AdminRepositoryClass (method getAdminRole())) username: " + username + " " + e);
+            System.err.printf("Error (AdminRepositoryClass (method getAdminRole(username : %s)))%n%s%n", username, e);
         }
         return "";
     }

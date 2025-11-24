@@ -24,7 +24,7 @@ public class GroupRepository {
                 System.out.println("Failed to add new group: " + groupName);
             }
         } catch (SQLException e) {
-            System.err.println("Error (GroupRepositoryClass (method addNewGroup())) " + e);
+            System.err.printf("Error (GroupRepositoryClass (method addNewGroup(%s))) %s%n", groupName, e);
         }
     }
 
