@@ -24,8 +24,11 @@ public class MarkupSetter {
     private final LinksRepository linksRepository;
     private final GroupRepository groupRepository;
 
-    private static InlineKeyboardButton backButton;
+    private static InlineKeyboardButton backButtonToMainMenu;
     private static InlineKeyboardButton addNewGroupButton;
+    private static InlineKeyboardButton backButtonToFiles;
+    private static InlineKeyboardButton backButtonToLinks;
+    private static InlineKeyboardButton backButtonToLessons;
 
     public MarkupSetter(FilesController filesController, FileTrackerRepository fileTrackerRepository,
                         UserController userController, LinksRepository linksRepository, GroupRepository groupRepository) {
@@ -34,7 +37,10 @@ public class MarkupSetter {
         this.userController = userController;
         this.linksRepository = linksRepository;
         this.groupRepository = groupRepository;
-        backButton = ButtonSetter.setButton("Назад", "BackButtonPressed");
+        backButtonToMainMenu = ButtonSetter.setButton("Назад", "BackButtonPressed");
+        backButtonToFiles = ButtonSetter.setButton("Назад", "FileButtonPressed");
+        backButtonToLinks = ButtonSetter.setButton("Назад", "LinksButtonPressed");
+        backButtonToLessons = ButtonSetter.setButton("Назад", "LessonButtonPressed");
         addNewGroupButton = ButtonSetter.setButton("Добавить группу", "AddGroupButtonPressed");
     }
 
@@ -68,7 +74,7 @@ public class MarkupSetter {
     private InlineKeyboardMarkup getOnlyCancelButton() {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        keyboard.add(ButtonSetter.setRow(backButton));
+        keyboard.add(ButtonSetter.setRow(backButtonToMainMenu));
         markup.setKeyboard(keyboard);
         return markup;
     }
@@ -92,7 +98,7 @@ public class MarkupSetter {
         keyboard.add(ButtonSetter.setRow(siteButton));
 
         //кнопка для возвращения в глав меню
-        keyboard.add(ButtonSetter.setRow(backButton));
+        keyboard.add(ButtonSetter.setRow(backButtonToMainMenu));
 
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         markup.setKeyboard(keyboard);
@@ -134,7 +140,7 @@ public class MarkupSetter {
             row.add(button);
             keyboard.add(row);
         }
-        keyboard.add(ButtonSetter.setRow(backButton));
+        keyboard.add(ButtonSetter.setRow(backButtonToLessons));
         markup.setKeyboard(keyboard);
         return markup;
     }
@@ -151,7 +157,7 @@ public class MarkupSetter {
                 keyboard.add(ButtonSetter.setRow(button));
             }
         }
-        keyboard.add(ButtonSetter.setRow(backButton));
+        keyboard.add(ButtonSetter.setRow(backButtonToFiles));
         markup.setKeyboard(keyboard);
         return markup;
     }
@@ -167,7 +173,7 @@ public class MarkupSetter {
                 keyboard.add(ButtonSetter.setRow(button));
             }
         }
-        keyboard.add(ButtonSetter.setRow(backButton));
+        keyboard.add(ButtonSetter.setRow(backButtonToFiles));
         markup.setKeyboard(keyboard);
         return markup;
     }
@@ -183,7 +189,7 @@ public class MarkupSetter {
                 keyboard.add(ButtonSetter.setRow(button));
             }
         }
-        keyboard.add(ButtonSetter.setRow(backButton));
+        keyboard.add(ButtonSetter.setRow(backButtonToFiles));
         markup.setKeyboard(keyboard);
         return markup;
     }
@@ -212,7 +218,7 @@ public class MarkupSetter {
             InlineKeyboardButton button = ButtonSetter.setButton(group, group + "GroupForLinks");
             keyboard.add(ButtonSetter.setRow(button));
         }
-        keyboard.add(ButtonSetter.setRow(backButton, addNewGroupButton));
+        keyboard.add(ButtonSetter.setRow(backButtonToMainMenu, addNewGroupButton));
         markup.setKeyboard(keyboard);
         return markup;
     }
@@ -227,7 +233,7 @@ public class MarkupSetter {
             keyboard.add(ButtonSetter.setRow(button));
         }
         InlineKeyboardButton addLinkButton = ButtonSetter.setButton("Добавить ссылку", group + "AddLinkButton");
-        keyboard.add(ButtonSetter.setRow(backButton, addLinkButton));
+        keyboard.add(ButtonSetter.setRow(backButtonToLinks, addLinkButton));
         markup.setKeyboard(keyboard);
         return markup;
     }
@@ -243,7 +249,7 @@ public class MarkupSetter {
             }
         }
         InlineKeyboardButton addFileButtons = ButtonSetter.setButton("Сделать основной: " + folder, folder + "AddFileButton");
-        keyboard.add(ButtonSetter.setRow(backButton, addFileButtons));
+        keyboard.add(ButtonSetter.setRow(backButtonToFiles, addFileButtons));
         markup.setKeyboard(keyboard);
         return markup;
     }
@@ -267,8 +273,7 @@ public class MarkupSetter {
         InlineKeyboardButton addFolder = ButtonSetter.setButton("Добавить папку", "AddFolderButtonPressed");
         keyboard.add(ButtonSetter.setRow(addFolder, deleteButton));
 
-        InlineKeyboardButton back = ButtonSetter.setButton("Назад", "BackButtonPressed");
-        keyboard.add(ButtonSetter.setRow(back));
+        keyboard.add(ButtonSetter.setRow(backButtonToMainMenu));
 
         markup.setKeyboard(keyboard);
         return markup;
