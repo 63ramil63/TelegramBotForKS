@@ -12,7 +12,6 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -26,7 +25,6 @@ public class MarkupSetter {
     private final GroupRepository groupRepository;
 
     private static InlineKeyboardButton backButton;
-    private static InlineKeyboardButton addLinkButton;
     private static InlineKeyboardButton addNewGroupButton;
 
     public MarkupSetter(FilesController filesController, FileTrackerRepository fileTrackerRepository,
@@ -37,7 +35,6 @@ public class MarkupSetter {
         this.linksRepository = linksRepository;
         this.groupRepository = groupRepository;
         backButton = ButtonSetter.setButton("Назад", "BackButtonPressed");
-        addLinkButton = ButtonSetter.setButton("Добавить ссылку", "AddLinkButtonPressed");
         addNewGroupButton = ButtonSetter.setButton("Добавить группу", "AddGroupButtonPressed");
     }
 
@@ -229,7 +226,50 @@ public class MarkupSetter {
             InlineKeyboardButton button = ButtonSetter.setButton(linkName, linkName + "LinkN" + group);
             keyboard.add(ButtonSetter.setRow(button));
         }
+        InlineKeyboardButton addLinkButton = ButtonSetter.setButton("Добавить ссылку", group + "AddLinkButton");
         keyboard.add(ButtonSetter.setRow(backButton, addLinkButton));
+        markup.setKeyboard(keyboard);
+        return markup;
+    }
+
+    public InlineKeyboardMarkup getFilesFromFolderMarkup(String folder) {
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+        List<String> files = filesController.getFilesFromDatabaseByFolder(folder);
+        if (!files.isEmpty()) {
+            for (String file : files) {
+                InlineKeyboardButton button = ButtonSetter.setButton(file, folder + TBot.delimiter + file + "File");
+                keyboard.add(ButtonSetter.setRow(button));
+            }
+        }
+        InlineKeyboardButton addFileButtons = ButtonSetter.setButton("Сделать основной: " + folder, folder + "AddFileButton");
+        keyboard.add(ButtonSetter.setRow(backButton, addFileButtons));
+        markup.setKeyboard(keyboard);
+        return markup;
+    }
+
+    private List<InlineKeyboardButton> setRowForFolder(String data) {
+        List<InlineKeyboardButton> row = new ArrayList<>();
+        row.add(ButtonSetter.setButton(data, data + "Folder"));
+        return row;
+    }
+
+    public InlineKeyboardMarkup getFoldersFromDatabaseMarkup() {
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+        List<String> folders = filesController.getFoldersFromTable();
+        if (folders != null && !folders.isEmpty()) {
+            for (String folder : folders) {
+                keyboard.add(setRowForFolder(folder));
+            }
+        }
+        InlineKeyboardButton deleteButton = ButtonSetter.setButton("Удалить файл", "DeleteFileButtonPressed");
+        InlineKeyboardButton addFolder = ButtonSetter.setButton("Добавить папку", "AddFolderButtonPressed");
+        keyboard.add(ButtonSetter.setRow(addFolder, deleteButton));
+
+        InlineKeyboardButton back = ButtonSetter.setButton("Назад", "BackButtonPressed");
+        keyboard.add(ButtonSetter.setRow(back));
+
         markup.setKeyboard(keyboard);
         return markup;
     }
@@ -237,9 +277,9 @@ public class MarkupSetter {
     public InlineKeyboardMarkup getChangeableMarkup(String key) {
         if (key.contains("Folder")) {
             key = key.replaceAll("Folder$", "");
-            return filesController.getFilesFromFolderMarkup(key);
+            return getFilesFromFolderMarkup(key);
         } else if (key.equals("FileButtonPressed")) {
-            return filesController.getFoldersFromDatabaseMarkup();
+            return getFoldersFromDatabaseMarkup();
         } else if (key.equals("LinksButtonPressed")) {
             return setLinksMainMarkup();
         } else if (key.contains("DeleteFileButtonPressed") || key.contains("FilesDelAdm")) {

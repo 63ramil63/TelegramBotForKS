@@ -42,34 +42,8 @@ public class FilesController {
         this.maxFileSize = maxFileSize;
     }
 
-    private List<InlineKeyboardButton> setRow(String data) {
-        List<InlineKeyboardButton> row = new ArrayList<>();
-        row.add(ButtonSetter.setButton(data, data + "Folder"));
-        return row;
-    }
-
     public List<String> getFoldersFromTable() {
         return folderRepository.getFolders();
-    }
-
-    public InlineKeyboardMarkup getFoldersFromDatabaseMarkup() {
-        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
-        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        List<String> folders = getFoldersFromTable();
-        if (folders != null && !folders.isEmpty()) {
-            for (String folder : folders) {
-                keyboard.add(setRow(folder));
-            }
-        }
-        InlineKeyboardButton deleteButton = ButtonSetter.setButton("Удалить файл", "DeleteFileButtonPressed");
-        InlineKeyboardButton addFolder = ButtonSetter.setButton("Добавить папку", "AddFolderButtonPressed");
-        keyboard.add(ButtonSetter.setRow(addFolder, deleteButton));
-
-        InlineKeyboardButton back = ButtonSetter.setButton("Назад", "BackButtonPressed");
-        keyboard.add(ButtonSetter.setRow(back));
-
-        markup.setKeyboard(keyboard);
-        return markup;
     }
 
     private List<String> getFoldersFromPath() throws IOException{
@@ -111,22 +85,6 @@ public class FilesController {
         List<String> files;
         files = fileTrackerRepository.getFilesByFolderName(folder);
         return files;
-    }
-
-    public InlineKeyboardMarkup getFilesFromFolderMarkup(String folder) {
-        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
-        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        List<String> files = getFilesFromDatabaseByFolder(folder);
-        if (!files.isEmpty()) {
-            for (String file : files) {
-                InlineKeyboardButton button = ButtonSetter.setButton(file, folder + delimiter + file + "File");
-                keyboard.add(ButtonSetter.setRow(button));
-            }
-        }
-        InlineKeyboardButton back = ButtonSetter.setButton("Назад", "BackButtonPressed");
-        keyboard.add(ButtonSetter.setRow(back));
-        markup.setKeyboard(keyboard);
-        return markup;
     }
 
     private void addFileToDatabase(String folder, String fileName) {

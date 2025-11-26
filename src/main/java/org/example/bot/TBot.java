@@ -493,19 +493,6 @@ public class TBot extends TelegramLongPollingBot {
                 }
                 return;
             }
-            case "AddLinkButtonPressed" -> {
-                userRepository.updateCanAddLink(chatId, (byte) 1);
-                message = setEditMessageWithoutMarkup(chatId, "Отправьте название ссылки и саму ссылку в виде\n" +
-                        "'название ссылки':'ссылка'", messageId);
-                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK));
-                try {
-                    execute(message);
-                } catch (TelegramApiException e) {
-                    System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
-                    sendEditMessageResponse(chatId, "SimpleError", messageId);
-                }
-                return;
-            }
             case "TodayScheduleButtonPressed" -> {
                 String groupId = userRepository.getGroupId(chatId);
                 if (groupId.isEmpty()) {
@@ -635,11 +622,6 @@ public class TBot extends TelegramLongPollingBot {
                 sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
         } else if (data.endsWith("Folder")) {
-            // Установка пути у пользователя
-            String filePath = data.replaceAll("Folder$", "");
-            // Установка нового пути пользователя
-            userRepository.updateFilePath(chatId, filePath);
-
             message = setEditMessageWithoutMarkup(chatId, "Выберите вашу группу", messageId);
             message.setReplyMarkup(markupSetter.getChangeableMarkup(data));
             try {
@@ -648,14 +630,36 @@ public class TBot extends TelegramLongPollingBot {
                 System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);                sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
         } else if (data.endsWith("GroupForLinks")) {
-            String group = data.replace("GroupForLinks", "").trim();
-            userRepository.updateGroupForLinks(chatId, group);
             message = setEditMessageWithoutMarkup(chatId, "Выберите нужную вам ссылку", messageId);
             message.setReplyMarkup(markupSetter.getChangeableMarkup(data));
             try {
                 execute(message);
             } catch (TelegramApiException e) {
                 System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);            }
+        } else if (data.endsWith("AddFileButton")) {
+            String folder = data.replaceAll("AddFileButton$", "");
+            userRepository.updateFilePath(chatId, folder);
+            message = setEditMessageWithoutMarkup(chatId, "Теперь отправленные вами файлы будут сохраняться в эту папку: " + folder, messageId);
+            message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK));
+            try {
+                execute(message);
+            } catch (TelegramApiException e) {
+                System.err.printf("Error (TBotClass (method sendEditMessage(data : %s)))%n%s%n", data, e);
+            }
+        } else if (data.endsWith("AddLinkButton")) {
+            String group = data.replace("AddLinkButton", "");
+            userRepository.updateGroupForLinks(chatId, group);
+            userRepository.updateCanAddLink(chatId, (byte) 1);
+            message = setEditMessageWithoutMarkup(chatId, "Отправьте название ссылки и саму ссылку в виде\n" +
+                    "название_ссылки:ссылка", messageId);
+            message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK));
+            try {
+                execute(message);
+            } catch (TelegramApiException e) {
+                userRepository.updateCanAddLink(chatId, (byte) 0);
+                System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
+                sendEditMessageResponse(chatId, "SimpleError", messageId);
+            }
         } else if (data.contains("LinkN")) {
 
             DeleteMessageBuilder deleteMessage = new DeleteMessageBuilder(chatId, messageId);
@@ -721,7 +725,7 @@ public class TBot extends TelegramLongPollingBot {
             sendEditMessageResponse(chatId, data, messageId);
         } else if (data.contains("DeleteFileButtonPressed") || data.contains("FilesDelAdm")) {
             sendEditMessageResponse(chatId, data, messageId);
-        } else if (data.contains("File")) {
+        } else if (data.endsWith("File")) {
             deleteMessage(chatId, messageId);
             checkMessageBeforeResponse(chatId, data);
         } else {
