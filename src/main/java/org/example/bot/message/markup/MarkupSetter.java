@@ -274,7 +274,7 @@ public class MarkupSetter {
         return markup;
     }
 
-    public InlineKeyboardMarkup getChangeableMarkup(String key) {
+    public InlineKeyboardMarkup getChangeableMarkup(String key) throws IllegalArgumentException {
         if (key.contains("Folder")) {
             key = key.replaceAll("Folder$", "");
             return getFilesFromFolderMarkup(key);
@@ -306,6 +306,7 @@ public class MarkupSetter {
             return savedChangeableMarkup.get(key);
         }
         System.err.printf("Error (MarkupSetterClass (method getChangeableMarkup(key : %s)))%n", key);
-        return null;
+        throw new IllegalArgumentException("Illegal argument(key) in method getChangeableMarkup() MarkupSetterClass() \n " +
+                "Argument is : " + key);
     }
 }

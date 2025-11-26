@@ -429,11 +429,13 @@ public class TBot extends TelegramLongPollingBot {
         switch (data) {
             case "Help" -> {
                 message = setEditMessageWithoutMarkup(chatId, helpResponse, messageId);
-                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
                 try {
+                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
                     execute(message);
                 } catch (TelegramApiException e) {
-                    System.err.printf("The new text equals with old: Error (TBotClass (method sendEditMessageResponse(Help))) %s%n", e.getMessage());
+                    System.err.printf("The new text equals with old: Error (TBotClass (method sendEditMessageResponse(Help))) %s%n", e);
+                } catch (IllegalArgumentException e) {
+                    System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                 }
                 return;
             }
@@ -461,10 +463,10 @@ public class TBot extends TelegramLongPollingBot {
             }
             case "FileButtonPressed" -> {
                 message = setEditMessageWithoutMarkup(chatId, "Выберите вашу группу", messageId);
-                message.setReplyMarkup(markupSetter.getChangeableMarkup(data));
                 try {
+                    message.setReplyMarkup(markupSetter.getChangeableMarkup(data));
                     execute(message);
-                } catch (TelegramApiException e) {
+                } catch (TelegramApiException | IllegalArgumentException  e) {
                     System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                     sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
@@ -472,10 +474,10 @@ public class TBot extends TelegramLongPollingBot {
             case "AddFolderButtonPressed" -> {
                 userRepository.updateCanAddFolder(chatId, (byte) 1);
                 message = setEditMessageWithoutMarkup(chatId, "Отправьте название папки", messageId);
-                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
                 try {
+                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
                     execute(message);
-                } catch (TelegramApiException e) {
+                } catch (TelegramApiException | IllegalArgumentException e) {
                     System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                     sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
@@ -484,10 +486,10 @@ public class TBot extends TelegramLongPollingBot {
             case "AddGroupButtonPressed" -> {
                 userRepository.updateCanAddGroup(chatId, (byte) 1);
                 message = setEditMessageWithoutMarkup(chatId, "Отправьте название группы", messageId);
-                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK));
                 try {
+                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK));
                     execute(message);
-                } catch (TelegramApiException e) {
+                } catch (TelegramApiException | IllegalArgumentException e) {
                     System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                     sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
@@ -501,11 +503,13 @@ public class TBot extends TelegramLongPollingBot {
                 }
                 String scheduleToday = scheduleCache.getScheduleToday(groupId);
                 message = setEditMessageWithoutMarkup(chatId, scheduleToday, messageId);
-                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.LessonMenu));
                 try {
+                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.LessonMenu));
                     execute(message);
                 } catch (TelegramApiException e) {
                     System.err.println("The new text equals with old: Error (TBotClass (method sendEditMessage(TodaySchedule))) " + e);
+                } catch (IllegalArgumentException e) {
+                    System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                 }
                 return;
             }
@@ -517,20 +521,23 @@ public class TBot extends TelegramLongPollingBot {
                 }
                 String scheduleTomorrow = scheduleCache.getScheduleTomorrow(groupId);
                 message = setEditMessageWithoutMarkup(chatId, scheduleTomorrow, messageId);
-                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.LessonMenu));
                 try {
+                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.LessonMenu));
                     execute(message);
                 } catch (TelegramApiException e) {
                     System.err.println("The new text equals with old: Error (TBotClass (method sendEditMessage(TomorrowSchedule))) " + e);
+                } catch (IllegalArgumentException e) {
+                    System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
+                    sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
                 return;
             }
             case "SelectYearButtonPressed" -> {
                 message = setEditMessageWithoutMarkup(chatId, "Выберите курс", messageId);
-                message.setReplyMarkup(markupSetter.getChangeableMarkup("Year"));
                 try {
+                    message.setReplyMarkup(markupSetter.getChangeableMarkup("Year"));
                     execute(message);
-                } catch (TelegramApiException e) {
+                } catch (TelegramApiException | IllegalArgumentException e) {
                     System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s", data, chatId, e);
                     sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
@@ -538,20 +545,20 @@ public class TBot extends TelegramLongPollingBot {
             }
             case "GetNotification" -> {
                 message = setEditMessageWithoutMarkup(chatId, notification.toString(), messageId);
-                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
                 try {
+                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
                     execute(message);
-                } catch (TelegramApiException e) {
+                } catch (TelegramApiException | IllegalArgumentException e) {
                     System.err.println("The new text equals with old: Error (TBotClass (method sendEditMessageResponse(GetNotification))) " + e);
                 }
                 return;
             }
             case "DeleteFileButtonPressed" -> {
                 message = setEditMessageWithoutMarkup(chatId, "Выберите файл, который хотите удалить", messageId);
-                message.setReplyMarkup(markupSetter.getChangeableMarkup("DeleteFileButtonPressed" + chatId));
                 try {
+                    message.setReplyMarkup(markupSetter.getChangeableMarkup("DeleteFileButtonPressed" + chatId));
                     execute(message);
-                } catch (TelegramApiException e) {
+                } catch (TelegramApiException | IllegalArgumentException e) {
                     System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                     sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
@@ -559,10 +566,10 @@ public class TBot extends TelegramLongPollingBot {
             }
             case "GroupNotSelected" -> {
                 message = setEditMessageWithoutMarkup(chatId, "У вас не выбрана группа \n Выберите курс", messageId);
-                message.setReplyMarkup(markupSetter.getChangeableMarkup("Year"));
                 try {
+                    message.setReplyMarkup(markupSetter.getChangeableMarkup("Year"));
                     execute(message);
-                } catch (TelegramApiException e) {
+                } catch (TelegramApiException | IllegalArgumentException e) {
                     System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                     sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
@@ -570,10 +577,10 @@ public class TBot extends TelegramLongPollingBot {
             }
             case "LinksButtonPressed" -> {
                 message = setEditMessageWithoutMarkup(chatId, "Выберите группу", messageId);
-                message.setReplyMarkup(markupSetter.getChangeableMarkup("LinksButtonPressed"));
                 try {
-                   execute(message);
-                } catch (TelegramApiException e) {
+                    message.setReplyMarkup(markupSetter.getChangeableMarkup("LinksButtonPressed"));
+                    execute(message);
+                } catch (TelegramApiException | IllegalArgumentException e) {
                     System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                     sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
@@ -581,10 +588,10 @@ public class TBot extends TelegramLongPollingBot {
             }
             case "SimpleError" -> {
                 message = setEditMessageWithoutMarkup(chatId, "Произошла неожиданная ошибка", messageId);
-                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
                 try {
+                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
                     execute(message);
-                } catch (TelegramApiException e) {
+                } catch (TelegramApiException | IllegalArgumentException e) {
                     System.err.println("Error (TBotClass (method sendEditMessageResponse(SelectYearButtonsPressed))) " + e);
                 }
                 return;
@@ -593,11 +600,12 @@ public class TBot extends TelegramLongPollingBot {
 
         if (data.endsWith("FilesDelAdm")) {
             message = setEditMessageWithoutMarkup(chatId, "Выберите файл, который хотите удалить", messageId);
-            message.setReplyMarkup(markupSetter.getChangeableMarkup(data));
             try {
+                message.setReplyMarkup(markupSetter.getChangeableMarkup(data));
                 execute(message);
-            } catch (TelegramApiException e) {
+            } catch (TelegramApiException | IllegalArgumentException e) {
                 System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
+                sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
         } else if (data.endsWith("Del")) {
             String correctPath = data.replaceAll("Del$", "");
@@ -608,11 +616,11 @@ public class TBot extends TelegramLongPollingBot {
                 String file = correctPath.substring(delimiterIndex + 1);
                 if (fileTrackerRepository.deleteUserFileFromRepository(folder, file)) {
                     message = setEditMessageWithoutMarkup(chatId, "Файл удален!", messageId);
-                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
                     try {
+                        message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
                         execute(message);
-                    } catch (TelegramApiException e) {
-                        System.err.println();
+                    } catch (TelegramApiException | IllegalArgumentException e) {
+                        System.err.printf("Error (TBotClass (method sendEditMessageResponse(chatId : %d, data : %s)))%n%s%n", chatId, data, e);
                     }
                 } else {
                     sendEditMessageResponse(chatId, "SimpleError", messageId);
@@ -623,28 +631,32 @@ public class TBot extends TelegramLongPollingBot {
             }
         } else if (data.endsWith("Folder")) {
             message = setEditMessageWithoutMarkup(chatId, "Выберите вашу группу", messageId);
-            message.setReplyMarkup(markupSetter.getChangeableMarkup(data));
             try {
+                message.setReplyMarkup(markupSetter.getChangeableMarkup(data));
                 execute(message);
-            } catch (TelegramApiException e) {
+            } catch (TelegramApiException | IllegalArgumentException e) {
                 System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);                sendEditMessageResponse(chatId, "SimpleError", messageId);
+                sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
         } else if (data.endsWith("GroupForLinks")) {
             message = setEditMessageWithoutMarkup(chatId, "Выберите нужную вам ссылку", messageId);
-            message.setReplyMarkup(markupSetter.getChangeableMarkup(data));
             try {
+                message.setReplyMarkup(markupSetter.getChangeableMarkup(data));
                 execute(message);
-            } catch (TelegramApiException e) {
-                System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);            }
+            } catch (TelegramApiException | IllegalArgumentException e) {
+                System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
+                sendEditMessageResponse(chatId, "SimpleError", messageId);
+            }
         } else if (data.endsWith("AddFileButton")) {
             String folder = data.replaceAll("AddFileButton$", "");
             userRepository.updateFilePath(chatId, folder);
             message = setEditMessageWithoutMarkup(chatId, "Теперь отправленные вами файлы будут сохраняться в эту папку: " + folder, messageId);
-            message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK));
             try {
+                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK));
                 execute(message);
-            } catch (TelegramApiException e) {
+            } catch (TelegramApiException | IllegalArgumentException e) {
                 System.err.printf("Error (TBotClass (method sendEditMessage(data : %s)))%n%s%n", data, e);
+                sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
         } else if (data.endsWith("AddLinkButton")) {
             String group = data.replace("AddLinkButton", "");
@@ -652,10 +664,10 @@ public class TBot extends TelegramLongPollingBot {
             userRepository.updateCanAddLink(chatId, (byte) 1);
             message = setEditMessageWithoutMarkup(chatId, "Отправьте название ссылки и саму ссылку в виде\n" +
                     "название_ссылки:ссылка", messageId);
-            message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK));
             try {
+                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK));
                 execute(message);
-            } catch (TelegramApiException e) {
+            } catch (TelegramApiException | IllegalArgumentException e) {
                 userRepository.updateCanAddLink(chatId, (byte) 0);
                 System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                 sendEditMessageResponse(chatId, "SimpleError", messageId);
@@ -666,7 +678,7 @@ public class TBot extends TelegramLongPollingBot {
             try {
                 execute(deleteMessage.getMessage());
             } catch (TelegramApiException e) {
-                System.err.println("Error (TBotClass (sendEditMessageResponse())) " + e);
+                System.err.printf("Error (TBotClass (sendEditMessageResponse(chatId : %d, data : %s)))%n%s%n", chatId, data, e);
             }
 
             // Получение индекса для удаления метки и получения данных
@@ -688,8 +700,8 @@ public class TBot extends TelegramLongPollingBot {
             message.setReplyMarkup(markupSetter.getChangeableMarkup("Group" + num));
             try {
                 execute(message);
-            } catch (TelegramApiException e) {
-                System.err.println("Error (TBotClass (method sendEditMessageResponse(Year)))");
+            } catch (TelegramApiException | IllegalArgumentException e) {
+                System.err.println("Error (TBotClass (method sendEditMessageResponse(Year))) " + e);
                 sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
         } else if (data.contains("Group")) {
