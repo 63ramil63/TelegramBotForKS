@@ -45,7 +45,7 @@ public class ScheduleCache {
 
     public synchronized String getScheduleTomorrow(String groupId) {
         if (!cachedSchedule.containsKey(groupId) || cachedSchedule.get(groupId).isExpired()) {
-            System.out.println("Tomorrow cache expired, groupId: " + groupId);
+            System.out.println("Tomorrow cache expired or not found, groupId: " + groupId);
             clearExpiredCache();
             parseSchedule(groupId);
         }
