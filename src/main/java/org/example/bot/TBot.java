@@ -259,9 +259,8 @@ public class TBot extends TelegramLongPollingBot {
                 System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
                 checkMessageBeforeResponse(chatId, "SimpleError");
             }
-        } else if (data.endsWith("LinkN")) {
-            int index = data.lastIndexOf("LinkN");
-            String link = data.substring(0, index);
+        } else if (data.endsWith("_lnk")) {
+            String link = data.replaceAll("_lnk$", "");
             sendMessage = setSendMessage(chatId, "Вот ваша ссылка \n" + link, MarkupKey.NONE);
             try {
                 execute(sendMessage);
@@ -295,6 +294,7 @@ public class TBot extends TelegramLongPollingBot {
 
     // Специальная обработка команд, начинающихся с /
     private void sendNewMessageResponseOnCommand(long chatId, String data) {
+        System.out.printf("sendNewMessageResponse(chatId : %d | data : %s)%n", chatId, data);
         SendMessage sendMessage;
         switch (data) {
             case "/start" -> {
@@ -425,6 +425,7 @@ public class TBot extends TelegramLongPollingBot {
     }
 
     private void sendEditMessageResponse(long chatId, String data, int messageId) {
+        System.out.printf("sendEditMessageResponse(chatId : %d | data : %s | messageId : %d)%n", chatId, data, messageId);
         EditMessageText message;
         switch (data) {
             case "Help" -> {
@@ -439,7 +440,7 @@ public class TBot extends TelegramLongPollingBot {
                 }
                 return;
             }
-            case "LessonButtonPressed" -> {
+            case "LessonButton" -> {
                 message = setEditMessageWithoutMarkup(chatId, "Выберите дату", messageId);
                 message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.LessonMenu));
                 try {
@@ -450,7 +451,7 @@ public class TBot extends TelegramLongPollingBot {
                 }
                 return;
             }
-            case "BackButtonPressed" -> {
+            case "BackButton" -> {
                 message = setEditMessageWithoutMarkup(chatId, "Выберите функцию", messageId);
                 message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
                 try {
@@ -461,7 +462,7 @@ public class TBot extends TelegramLongPollingBot {
                 }
                 return;
             }
-            case "FileButtonPressed" -> {
+            case "FileButton" -> {
                 message = setEditMessageWithoutMarkup(chatId, "Выберите вашу группу", messageId);
                 try {
                     message.setReplyMarkup(markupSetter.getChangeableMarkup(data));
@@ -471,7 +472,7 @@ public class TBot extends TelegramLongPollingBot {
                     sendEditMessageResponse(chatId, "SimpleError", messageId);
                 }
             }
-            case "AddFolderButtonPressed" -> {
+            case "AddFolderButton" -> {
                 userRepository.updateCanAddFolder(chatId, (byte) 1);
                 message = setEditMessageWithoutMarkup(chatId, "Отправьте название папки", messageId);
                 try {
@@ -483,7 +484,7 @@ public class TBot extends TelegramLongPollingBot {
                 }
                 return;
             }
-            case "AddGroupButtonPressed" -> {
+            case "AddGroupButton" -> {
                 userRepository.updateCanAddGroup(chatId, (byte) 1);
                 message = setEditMessageWithoutMarkup(chatId, "Отправьте название группы", messageId);
                 try {
@@ -495,7 +496,7 @@ public class TBot extends TelegramLongPollingBot {
                 }
                 return;
             }
-            case "TodayScheduleButtonPressed" -> {
+            case "TodayScheduleButton" -> {
                 String groupId = userRepository.getGroupId(chatId);
                 if (groupId.isEmpty()) {
                     sendEditMessageResponse(chatId, "GroupNotSelected", messageId);
@@ -513,7 +514,7 @@ public class TBot extends TelegramLongPollingBot {
                 }
                 return;
             }
-            case "TomorrowScheduleButtonPressed" -> {
+            case "TomorrowScheduleButton" -> {
                 String groupId = userRepository.getGroupId(chatId);
                 if (groupId.isEmpty()) {
                     sendEditMessageResponse(chatId, "GroupNotSelected", messageId);
@@ -532,7 +533,7 @@ public class TBot extends TelegramLongPollingBot {
                 }
                 return;
             }
-            case "SelectYearButtonPressed" -> {
+            case "SelectYearButton" -> {
                 message = setEditMessageWithoutMarkup(chatId, "Выберите курс", messageId);
                 try {
                     message.setReplyMarkup(markupSetter.getChangeableMarkup("Year"));
@@ -553,10 +554,10 @@ public class TBot extends TelegramLongPollingBot {
                 }
                 return;
             }
-            case "DeleteFileButtonPressed" -> {
+            case "DeleteFileButton" -> {
                 message = setEditMessageWithoutMarkup(chatId, "Выберите файл, который хотите удалить", messageId);
                 try {
-                    message.setReplyMarkup(markupSetter.getChangeableMarkup("DeleteFileButtonPressed" + chatId));
+                    message.setReplyMarkup(markupSetter.getChangeableMarkup("DeleteFileButton" + chatId));
                     execute(message);
                 } catch (TelegramApiException | IllegalArgumentException e) {
                     System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
@@ -575,10 +576,10 @@ public class TBot extends TelegramLongPollingBot {
                 }
                 return;
             }
-            case "LinksButtonPressed" -> {
+            case "LinksButton" -> {
                 message = setEditMessageWithoutMarkup(chatId, "Выберите группу", messageId);
                 try {
-                    message.setReplyMarkup(markupSetter.getChangeableMarkup("LinksButtonPressed"));
+                    message.setReplyMarkup(markupSetter.getChangeableMarkup("LinksButton"));
                     execute(message);
                 } catch (TelegramApiException | IllegalArgumentException e) {
                     System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
@@ -592,7 +593,7 @@ public class TBot extends TelegramLongPollingBot {
                     message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
                     execute(message);
                 } catch (TelegramApiException | IllegalArgumentException e) {
-                    System.err.println("Error (TBotClass (method sendEditMessageResponse(SelectYearButtonsPressed))) " + e);
+                    System.err.println("Error (TBotClass (method sendEditMessageResponse(SelectYearButtons))) " + e);
                 }
                 return;
             }
@@ -635,7 +636,7 @@ public class TBot extends TelegramLongPollingBot {
                 message.setReplyMarkup(markupSetter.getChangeableMarkup(data));
                 execute(message);
             } catch (TelegramApiException | IllegalArgumentException e) {
-                System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);                sendEditMessageResponse(chatId, "SimpleError", messageId);
+                System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                 sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
         } else if (data.endsWith("GroupForLinks")) {
@@ -672,7 +673,7 @@ public class TBot extends TelegramLongPollingBot {
                 System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                 sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
-        } else if (data.contains("LinkN")) {
+        } else if (data.endsWith("_lnk")) {
 
             DeleteMessageBuilder deleteMessage = new DeleteMessageBuilder(chatId, messageId);
             try {
@@ -682,10 +683,8 @@ public class TBot extends TelegramLongPollingBot {
             }
 
             // Получение индекса для удаления метки и получения данных
-            int index = data.lastIndexOf("LinkN");
-            String group = data.substring(index + "LinkN".length());
-            String linkName = data.substring(0, index);
-            String link = linksRepository.getLinkByNameAndGroup(linkName, group) + "LinkN";
+            long id = Long.parseLong(data.replaceAll("_lnk$", ""));
+            String link = linksRepository.getLinkById(id) + "_lnk";
 
             sendNewMessageResponse(chatId, link);
             checkMessageBeforeResponse(chatId, "/start");
@@ -733,9 +732,9 @@ public class TBot extends TelegramLongPollingBot {
     }
 
     private void checkCallbackData(long chatId, String data, int messageId) {
-        if (data.contains("Folder") || data.equals("FileButtonPressed")) {
+        if (data.contains("_Folder") || data.equals("FileButton")) {
             sendEditMessageResponse(chatId, data, messageId);
-        } else if (data.contains("DeleteFileButtonPressed") || data.contains("FilesDelAdm")) {
+        } else if (data.contains("DeleteFileButton") || data.contains("FilesDelAdm")) {
             sendEditMessageResponse(chatId, data, messageId);
         } else if (data.endsWith("File")) {
             deleteMessage(chatId, messageId);

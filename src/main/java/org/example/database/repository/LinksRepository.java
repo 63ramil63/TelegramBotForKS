@@ -13,11 +13,12 @@ public class LinksRepository {
     private static final Database database = Database.getInstance();
     private static final String tableName = "links";
 
-    private static final String GET_ALL_LINKS_BY_GROUP_NAME = "SELECT LinkName FROM " + tableName + " WHERE GroupName = ?";
-    private static final String GET_ALL_LINKS_BY_USERS_CHAT_ID = "SELECT LinkName FROM " + tableName + " WHERE UsersChatId = ?";
+    private static final String GET_ALL_LINKS_BY_GROUP_NAME = "SELECT Id, LinkName FROM " + tableName + " WHERE GroupName = ?";
+    private static final String GET_ALL_LINKS_BY_USERS_CHAT_ID = "SELECT Id, LinkName, GroupName FROM " + tableName + " WHERE UsersChatId = ?";
     private static final String GET_LINK_BY_LINK_NAME_AND_GROUP = "SELECT Link FROM " + tableName + " WHERE LinkName = ? AND GroupName = ?";
     private static final String ADD_NEW_LINK = "INSERT INTO " + tableName + " (LinkName, GroupName, Link, UsersChatId) values (?, ?, ?, ?)";
-    
+    private static final String GET_LINK_INFO_BY_ID = "SELECT Link FROM " + tableName + " WHERE Id = ?";
+
     public void addLink(String linkName, String link, String groupName,  long chatId) {
         try (Connection connection = database.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(ADD_NEW_LINK)) {
@@ -36,30 +37,37 @@ public class LinksRepository {
         }
     }
 
-    public List<String> getAllLinksByGroupName(String groupName) {
-        List<String> links = new ArrayList<>();
+    public List<List<String>> getAllLinksByGroupName(String groupName) {
+        List<List<String>> links = new ArrayList<>();
         try (Connection connection = database.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(GET_ALL_LINKS_BY_GROUP_NAME)) {
             preparedStatement.setString(1, groupName);
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
-                links.add(resultSet.getNString(1));
+                String id = String.valueOf(resultSet.getLong(1));
+                String linkName = resultSet.getNString(2);
+                List<String> link = new ArrayList<>(List.of(id, linkName));
+                links.add(link);
             }
             return links;
         } catch (SQLException e) {
-            System.err.printf("Error (LinksRepositoryClass (method getAllLinksByGroupName(data : %s))) %n" + e);
+            System.err.printf("Error (LinksRepositoryClass (method getAllLinksByGroupName(data : %s))) %n%s%n", groupName, e);
         }
         return links;
     }
 
-    public List<String> getAllLinksByUsersChatId(long chatId) {
-        List<String> links = new ArrayList<>();
+    public List<List<String>> getAllLinksByUsersChatId(long chatId) {
+        List<List<String>> links = new ArrayList<>();
         try (Connection connection = database.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(GET_ALL_LINKS_BY_USERS_CHAT_ID)) {
             preparedStatement.setLong(1, chatId);
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
-                links.add(resultSet.getNString(1));
+                String id = String.valueOf(resultSet.getLong(1));
+                String groupName = resultSet.getNString(2);
+                String linkName = resultSet.getNString(3);
+                List<String> link = new ArrayList<>(List.of(id, groupName, linkName));
+                links.add(link);
             }
             return links;
         } catch (SQLException e) {
@@ -79,6 +87,20 @@ public class LinksRepository {
             }
         } catch (SQLException e) {
             System.err.printf("Error (LinksRepositoryClass (method getLinkByNameAndGroup(linkName : %s, group : %s)))%n%s%n", linkName, group, e);
+        }
+        return null;
+    }
+
+    public String getLinkById(long id) {
+        try (Connection connection = database.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(GET_LINK_INFO_BY_ID)) {
+            preparedStatement.setLong(1, id);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getNString(1);
+            }
+        }  catch (SQLException e) {
+            System.err.printf("Error (LinksRepositoryClass (method getLinkById(id : %s))) %n%s%n", id, e);
         }
         return null;
     }
