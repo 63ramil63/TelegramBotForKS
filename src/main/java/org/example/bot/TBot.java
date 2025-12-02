@@ -152,7 +152,6 @@ public class TBot extends TelegramLongPollingBot {
     }
 
     private void sendNewMessageResponse(long chatId, String data) {
-        System.out.println("Data is : " + data);
         SendMessage sendMessage;
         switch (data) {
             case "DocumentSaved" -> {
@@ -240,6 +239,27 @@ public class TBot extends TelegramLongPollingBot {
                 } catch (TelegramApiException e) {
                     System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
                 }
+                return;
+            }
+            case "LinkSaved" -> {
+                userRepository.updateCanAddLink(chatId, (byte) 0);
+                sendMessage = setSendMessage(chatId, "Ссылка сохранена!", MarkupKey.MainMenu);
+                try {
+                    execute(sendMessage);
+                } catch (TelegramApiException e) {
+                    System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
+                }
+                return;
+            }
+            case "GroupSaved" -> {
+                userRepository.updateCanAddGroup(chatId, (byte) 0);
+                sendMessage = setSendMessage(chatId, "Новая группа сохранена", MarkupKey.MainMenu);
+                try {
+                    execute(sendMessage);
+                } catch (TelegramApiException e) {
+                    System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
+                }
+                return;
             }
         }
         if (data.endsWith("File")) {
@@ -274,13 +294,13 @@ public class TBot extends TelegramLongPollingBot {
                 String link = parts[1].trim();
                 String group = userRepository.getGroupForLinks(chatId);
                 linksRepository.addLink(linkName, link, group, chatId);
-                sendNewMessageResponseOnCommand(chatId, "/start");
+                sendNewMessageResponse(chatId, "LinkSaved");
             } else {
                 sendNewMessageResponse(chatId, "SimpleError");
             }
         } else if (userRepository.getCanAddGroup(chatId)) {
             groupRepository.addNewGroup(data.trim());
-            sendNewMessageResponseOnCommand(chatId, "/start");
+            sendNewMessageResponse(chatId, "GroupSaved");
         } else if (FilesController.checkFileName(data) && userRepository.getCanAddFolder(chatId)) {
             if (!FilesController.checkFileName(data)) {
                 sendNewMessageResponse(chatId, "InvalidFileName");
@@ -294,7 +314,6 @@ public class TBot extends TelegramLongPollingBot {
 
     // Специальная обработка команд, начинающихся с /
     private void sendNewMessageResponseOnCommand(long chatId, String data) {
-        System.out.printf("sendNewMessageResponse(chatId : %d | data : %s)%n", chatId, data);
         SendMessage sendMessage;
         switch (data) {
             case "/start" -> {
@@ -349,6 +368,7 @@ public class TBot extends TelegramLongPollingBot {
     }
 
     private void checkMessageBeforeResponse(long chatId, String data) {
+        System.out.printf("checkMessageBeforeResponse(chatId : %d | data : %s)%n", chatId, data);
         //Фикс для Unix систем
         if (data.charAt(0) == '/') {
             sendNewMessageResponseOnCommand(chatId, data);
