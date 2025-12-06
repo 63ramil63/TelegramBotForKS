@@ -3,6 +3,7 @@ package org.example.files;
 import org.example.bot.TBot;
 import org.example.database.repository.FileTrackerRepository;
 import org.example.database.repository.FolderRepository;
+import org.example.dto.FileDTO;
 import org.example.files.exception.FileSizeException;
 import org.example.files.exception.IncorrectExtensionException;
 import org.example.files.exception.InvalidCallbackDataException;
@@ -18,6 +19,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class FilesController {
@@ -78,8 +81,8 @@ public class FilesController {
         return files;
     }
 
-    public List<String> getFilesFromDatabaseByFolder(String folder) {
-        List<String> files;
+    public List<FileDTO> getFilesFromDatabaseByFolder(String folder) {
+        List<FileDTO> files;
         files = fileTrackerRepository.getFilesByFolderName(folder);
         return files;
     }
@@ -93,9 +96,14 @@ public class FilesController {
             List<String> folders = getFoldersFromPath();
             for (String folder : folders) {
                 List<String> filesInFolder = getFilesFromFolder(folder);
-                List<String> filesInDatabase = fileTrackerRepository.getFilesByFolderName(folder);
+                List<FileDTO> filesInDatabase = fileTrackerRepository.getFilesByFolderName(folder);
+
+                Set<String> databaseFileNames = filesInDatabase.stream()
+                        .map(FileDTO::getFileName)
+                        .collect(Collectors.toSet());
+
                 for (String fileInF : filesInFolder) {
-                    if (!filesInDatabase.contains(fileInF)) {
+                    if (!databaseFileNames.contains(fileInF)) {
                         addFileToDatabase(folder, fileInF);
                     }
                 }

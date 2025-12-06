@@ -9,6 +9,7 @@ import org.example.bot.message.markup.MarkupKey;
 import org.example.bot.message.markup.MarkupSetter;
 import org.example.controller.UserController;
 import org.example.database.repository.*;
+import org.example.dto.FileDTO;
 import org.example.files.FilesController;
 import org.example.files.exception.FileSizeException;
 import org.example.files.exception.IncorrectExtensionException;
@@ -263,10 +264,12 @@ public class TBot extends TelegramLongPollingBot {
             }
         }
         if (data.endsWith("File")) {
-            MessageWithDocBuilder message = new MessageWithDocBuilder(chatId, data);
+            long fileId = Long.parseLong(data.replaceAll("File$", ""));
+            FileDTO fileDTO = fileTrackerRepository.getFileInfoByFileId(fileId);
+            MessageWithDocBuilder message = new MessageWithDocBuilder(chatId, fileDTO);
             SendDocument sendDocument = message.getMessage();
             if (adminRepository.getAdmin(userRepository.getUserName(chatId))) {
-                long userId = fileTrackerRepository.getFileInfo(data.replaceAll("File$", ""));
+                long userId = fileTrackerRepository.getFilesChatIdById(fileId);
                 String username = userRepository.getUserName(userId);
                 sendDocument.setCaption("Данный файл отправлен пользователем: " +
                         (!username.isEmpty() ? username : " у данного пользователя нет username")
@@ -650,13 +653,12 @@ public class TBot extends TelegramLongPollingBot {
                 sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
         } else if (data.endsWith("_FDel")) {
-            String correctPath = data.replaceAll("_FDel$", "");
+            long fileId = Long.parseLong(data.replaceAll("_FDel$", ""));
+            FileDTO fileDTO = fileTrackerRepository.getFileInfoByFileId(fileId);
+            String correctPath = fileDTO.getFolder() + delimiter + fileDTO.getFileName();
             try {
                 filesController.deleteFile(correctPath);
-                int delimiterIndex = correctPath.indexOf(delimiter);
-                String folder = correctPath.substring(0, delimiterIndex);
-                String file = correctPath.substring(delimiterIndex + 1);
-                if (fileTrackerRepository.deleteUserFileFromRepository(folder, file)) {
+                if (fileTrackerRepository.deleteUserFileFromRepository(fileId)) {
                     message = setEditMessageWithoutMarkup(chatId, "Файл удален!", messageId);
                     try {
                         message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));

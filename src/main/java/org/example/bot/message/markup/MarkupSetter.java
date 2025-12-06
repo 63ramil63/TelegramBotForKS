@@ -6,6 +6,7 @@ import org.example.controller.UserController;
 import org.example.database.repository.FileTrackerRepository;
 import org.example.database.repository.GroupRepository;
 import org.example.database.repository.LinksRepository;
+import org.example.dto.FileDTO;
 import org.example.files.FilesController;
 import org.example.site.WebSite;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
@@ -154,10 +155,12 @@ public class MarkupSetter {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
         // Получение всех файлов, отправленных пользователем
-        List<String> filesPath = fileTrackerRepository.getAllUserFiles(chatId);
-        if (filesPath != null && !filesPath.isEmpty()) {
-            for (String filePath : filesPath) {
-                InlineKeyboardButton button = ButtonSetter.setButton(filePath, filePath + "_FDel");
+        List<FileDTO> filesDTOs = fileTrackerRepository.getAllUserFiles(chatId);
+        if (filesDTOs != null && !filesDTOs.isEmpty()) {
+            for (FileDTO fileDTO : filesDTOs) {
+                String filePath = fileDTO.getFolder() + TBot.delimiter + fileDTO.getFileName();
+                long fileId = fileDTO.getId();
+                InlineKeyboardButton button = ButtonSetter.setButton(filePath, fileId + "_FDel");
                 keyboard.add(ButtonSetter.setRow(button));
             }
         }
@@ -186,10 +189,12 @@ public class MarkupSetter {
     private InlineKeyboardMarkup setDeleteFilesFromFolderByAdm(String folder) {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        List<String> files = filesController.getFilesFromDatabaseByFolder(folder);
+        List<FileDTO> files = filesController.getFilesFromDatabaseByFolder(folder);
         if (files != null && !files.isEmpty()) {
-            for (String file : files) {
-                InlineKeyboardButton button = ButtonSetter.setButton(file, folder + TBot.delimiter + file + "_FDel");
+            for (FileDTO file : files) {
+                long fileId = file.getId();
+                String fileName = file.getFileName();
+                InlineKeyboardButton button = ButtonSetter.setButton(fileName, fileId + "_FDel");
                 keyboard.add(ButtonSetter.setRow(button));
             }
         }
@@ -249,10 +254,12 @@ public class MarkupSetter {
     private InlineKeyboardMarkup getFilesFromFolderMarkup(String folder) {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        List<String> files = filesController.getFilesFromDatabaseByFolder(folder);
+        List<FileDTO> files = filesController.getFilesFromDatabaseByFolder(folder);
         if (!files.isEmpty()) {
-            for (String file : files) {
-                InlineKeyboardButton button = ButtonSetter.setButton(file, folder + TBot.delimiter + file + "File");
+            for (FileDTO file : files) {
+                long fileId = file.getId();
+                String fileName = file.getFileName();
+                InlineKeyboardButton button = ButtonSetter.setButton(fileName, fileId + "File");
                 keyboard.add(ButtonSetter.setRow(button));
             }
         }
