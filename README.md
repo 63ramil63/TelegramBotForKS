@@ -25,3 +25,5 @@ delimiter =разделитель в файловой системе '\' windows
 extensions =docx,doc,txt,pdf,rtf,odt,html,epub,xls,xlsx,csv,ppt,pptx,odp,pdf,jpeg,png,gif,webp,tiff,raw
 
 fileMaxSize =30 - макс размер загружаемого файла в мб
+
+admins =перечисление главных админов через запятую(вписывайте username админов)
