@@ -79,6 +79,10 @@ public class MarkupSetter {
         return markup;
     }
 
+    private boolean userIsAdmin(long chatId) {
+        return userController.checkAdmin(userController.getUsername(chatId));
+    }
+
     private InlineKeyboardMarkup getLessonMenuButtons() {
 
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
@@ -153,7 +157,7 @@ public class MarkupSetter {
         List<String> filesPath = fileTrackerRepository.getAllUserFiles(chatId);
         if (filesPath != null && !filesPath.isEmpty()) {
             for (String filePath : filesPath) {
-                InlineKeyboardButton button = ButtonSetter.setButton(filePath, filePath + "Del");
+                InlineKeyboardButton button = ButtonSetter.setButton(filePath, filePath + "_FDel");
                 keyboard.add(ButtonSetter.setRow(button));
             }
         }
@@ -185,7 +189,7 @@ public class MarkupSetter {
         List<String> files = filesController.getFilesFromDatabaseByFolder(folder);
         if (files != null && !files.isEmpty()) {
             for (String file : files) {
-                InlineKeyboardButton button = ButtonSetter.setButton(file, folder + TBot.delimiter + file + "Del");
+                InlineKeyboardButton button = ButtonSetter.setButton(file, folder + TBot.delimiter + file + "_FDel");
                 keyboard.add(ButtonSetter.setRow(button));
             }
         }
@@ -196,10 +200,9 @@ public class MarkupSetter {
 
     // Проверка является ли пользователь админом и последующие шаги
     private InlineKeyboardMarkup setDeleteFilesMarkup(String key) {
-        System.err.println("Entered setDeleteFilesMarkup   kkjp;;.  ");
         if (key.contains("DeleteFileButton")) {
             long chatId = Long.parseLong(key.replaceAll("DeleteFileButton", ""));
-            if (userController.checkAdmin(userController.getUsername(chatId))) {
+            if (userIsAdmin(chatId)) {
                 return setSelectFolderToDeleteFilesByAdmin();
             } else {
                 return setDeleteUserFilesMarkup(chatId);
@@ -291,7 +294,7 @@ public class MarkupSetter {
         for (List<String> link : links) {
             String id = link.get(0);
             String linkName = link.get(1);
-            InlineKeyboardButton button = ButtonSetter.setButton(linkName, id + "_LinkDel_");
+            InlineKeyboardButton button = ButtonSetter.setButton(linkName, id + "_LDel");
             keyboard.add(ButtonSetter.setRow(button));
         }
         keyboard.add(ButtonSetter.setRow(backButtonToLinks));
@@ -304,7 +307,7 @@ public class MarkupSetter {
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
         List<String> folders = groupRepository.getAllGroups();
         for (String folder : folders) {
-            InlineKeyboardButton button = ButtonSetter.setButton(folder, folder + "_LnkFlrDel_");
+            InlineKeyboardButton button = ButtonSetter.setButton(folder, folder + "_LinkFlrDel");
             keyboard.add(ButtonSetter.setRow(button));
         }
         keyboard.add(ButtonSetter.setRow(backButtonToLinks));
@@ -314,11 +317,26 @@ public class MarkupSetter {
 
     private InlineKeyboardMarkup checkAdminBeforeSetDeleteLinksMarkup(String key) {
         long chatId = Long.parseLong(key.replaceAll("DeleteLinksButton", ""));
-        if (userController.checkAdmin(userController.getUsername(chatId))) {
+        if (userIsAdmin(chatId)) {
             return setSelectFolderToDeleteLinksByAdminMarkup();
         } else {
             return setDeleteLinksMarkup(chatId);
         }
+    }
+
+    private InlineKeyboardMarkup setLinksForDeleteFromGroup(String group) {
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+        List<List<String>> links = linksRepository.getAllLinksByGroupName(group);
+        for (List<String> link : links) {
+            String id = link.get(0);
+            String linkName = link.get(1);
+            InlineKeyboardButton button = ButtonSetter.setButton(linkName, id + "_LDel");
+            keyboard.add(ButtonSetter.setRow(button));
+        }
+        keyboard.add(ButtonSetter.setRow(backButtonToLinks));
+        markup.setKeyboard(keyboard);
+        return markup;
     }
 
     private InlineKeyboardMarkup fileCase(String key) throws IllegalArgumentException {
@@ -335,10 +353,13 @@ public class MarkupSetter {
     private InlineKeyboardMarkup linksCase(String key) {
         if (key.equals("LinksButton")) {
             return setLinksMainMarkup();
+        } else if (key.contains("DeleteLinksButton")) {
+            return checkAdminBeforeSetDeleteLinksMarkup(key);
         } else if (key.contains("GroupForLinks")) {
             return setLinksFromGroup(key);
-        } else if (key.equals("DeleteLinksButton")) {
-            return null;
+        } else if (key.endsWith("_LinkFlrDel")) {
+            String group = key.replaceAll("_LinkFlrDel$", "");
+            return setLinksForDeleteFromGroup(group);
         } else {
             return null;
         }
@@ -350,7 +371,7 @@ public class MarkupSetter {
             return getFilesFromFolderMarkup(key);
         } else if (key.contains("File") && !key.contains("Links")) {
             return fileCase(key);
-        } else if (key.contains("Links")) {
+        } else if (key.contains("Link")) {
             return linksCase(key);
         } else if (key.contains("Year")) {
             if (!savedChangeableMarkup.containsKey("Year")) {
@@ -371,7 +392,7 @@ public class MarkupSetter {
             }
             return savedChangeableMarkup.get(key);
         }
-        throw new IllegalArgumentException("Illegal argument(key) in method getChangeableMarkup() MarkupSetterClass() \n " +
+        throw new IllegalArgumentException("Illegal argument(key) in method getChangeableMarkup() MarkupSetterClass() \n" +
                 "Argument is : " + key);
     }
 }

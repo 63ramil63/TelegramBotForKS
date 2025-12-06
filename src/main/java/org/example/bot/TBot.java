@@ -607,6 +607,27 @@ public class TBot extends TelegramLongPollingBot {
                 }
                 return;
             }
+            case "DeleteLinksButton" -> {
+                message = setEditMessageWithoutMarkup(chatId, "Выберите группу", messageId);
+                try {
+                    message.setReplyMarkup(markupSetter.getChangeableMarkup(data + chatId));
+                    execute(message);
+                } catch (TelegramApiException | IllegalArgumentException e) {
+                    System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
+                    sendEditMessageResponse(chatId, "SimpleError", messageId);
+                }
+                return;
+            }
+            case "ErrorDeleteLinks" -> {
+                message = setEditMessageWithoutMarkup(chatId, "Возникла ошибка при удалении ссылки", messageId);
+                try {
+                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
+                    execute(message);
+                } catch (TelegramApiException | IllegalArgumentException e) {
+                    System.err.println("Error (TBotClass (method sendEditMessageResponse(SelectYearButtons))) " + e);
+                }
+                return;
+            }
             case "SimpleError" -> {
                 message = setEditMessageWithoutMarkup(chatId, "Произошла неожиданная ошибка", messageId);
                 try {
@@ -628,8 +649,8 @@ public class TBot extends TelegramLongPollingBot {
                 System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                 sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
-        } else if (data.endsWith("Del")) {
-            String correctPath = data.replaceAll("Del$", "");
+        } else if (data.endsWith("_FDel")) {
+            String correctPath = data.replaceAll("_FDel$", "");
             try {
                 filesController.deleteFile(correctPath);
                 int delimiterIndex = correctPath.indexOf(delimiter);
@@ -650,7 +671,31 @@ public class TBot extends TelegramLongPollingBot {
                 System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                 sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
-        } else if (data.endsWith("Folder")) {
+        } else if (data.endsWith("_LDel")) {
+            long id = Long.parseLong(data.replaceAll("_LDel", ""));
+            boolean isDeleted = linksRepository.deleteLinkById(id);
+            if (isDeleted) {
+                message = setEditMessageWithoutMarkup(chatId, "Ссылка удалена!", messageId);
+                try {
+                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
+                    execute(message);
+                } catch (TelegramApiException | IllegalArgumentException e) {
+                    System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
+                    sendEditMessageResponse(chatId, "SimpleError", messageId);
+                }
+            } else {
+                sendEditMessageResponse(chatId, "ErrorDeleteLinks", messageId);
+            }
+        } else if (data.endsWith("_LinkFlrDel")) {
+            message = setEditMessageWithoutMarkup(chatId, "Выберите ссылку, которую хотите удалить", messageId);
+            try {
+                message.setReplyMarkup(markupSetter.getChangeableMarkup(data));
+                execute(message);
+            } catch (TelegramApiException | IllegalArgumentException e) {
+                System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
+                sendEditMessageResponse(chatId, "SimpleError", messageId);
+            }
+        } else if (data.endsWith("_Folder")) {
             message = setEditMessageWithoutMarkup(chatId, "Выберите вашу группу", messageId);
             try {
                 message.setReplyMarkup(markupSetter.getChangeableMarkup(data));
