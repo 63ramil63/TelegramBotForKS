@@ -4,5 +4,6 @@ public enum MarkupKey {
     LessonMenu,
     MainMenu,
     ONLY_BACK,
+    ONLY_BACK_TO_FILES,
     NONE
 }

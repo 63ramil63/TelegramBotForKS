@@ -65,6 +65,7 @@ public class MarkupSetter {
             case MarkupKey.LessonMenu -> savedBasicMarkup.put(key, getLessonMenuButtons());
             case MarkupKey.ONLY_BACK -> savedBasicMarkup.put(key, getOnlyCancelButton());
             case MarkupKey.NONE -> savedBasicMarkup.put(key, getNoneMarkup());
+            case MarkupKey.ONLY_BACK_TO_FILES -> savedBasicMarkup.put(key, getOnlyBackToFileButton());
         }
     }
 
@@ -76,6 +77,14 @@ public class MarkupSetter {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
         keyboard.add(ButtonSetter.setRow(backButtonToMainMenu));
+        markup.setKeyboard(keyboard);
+        return markup;
+    }
+
+    private InlineKeyboardMarkup getOnlyBackToFileButton() {
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+        keyboard.add(ButtonSetter.setRow(backButtonToFiles));
         markup.setKeyboard(keyboard);
         return markup;
     }

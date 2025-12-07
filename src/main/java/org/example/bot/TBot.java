@@ -271,7 +271,7 @@ public class TBot extends TelegramLongPollingBot {
             if (adminRepository.getAdmin(userRepository.getUserName(chatId))) {
                 long userId = fileTrackerRepository.getFilesChatIdById(fileId);
                 String username = userRepository.getUserName(userId);
-                sendDocument.setCaption("Данный файл отправлен пользователем: " +
+                sendDocument.setCaption("Данный файл отправлен : " +
                         (!username.isEmpty() ? username : " у данного пользователя нет username")
                         + "\nChatId: " + userId);
             }
@@ -720,7 +720,7 @@ public class TBot extends TelegramLongPollingBot {
             userRepository.updateFilePath(chatId, folder);
             message = setEditMessageWithoutMarkup(chatId, "Теперь отправленные вами файлы будут сохраняться в эту папку: " + folder, messageId);
             try {
-                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK));
+                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK_TO_FILES));
                 execute(message);
             } catch (TelegramApiException | IllegalArgumentException e) {
                 System.err.printf("Error (TBotClass (method sendEditMessage(data : %s)))%n%s%n", data, e);
