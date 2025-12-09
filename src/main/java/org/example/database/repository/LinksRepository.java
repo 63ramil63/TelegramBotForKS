@@ -1,6 +1,7 @@
 package org.example.database.repository;
 
 import org.example.database.Database;
+import org.example.dto.LinkDTO;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -15,9 +16,9 @@ public class LinksRepository {
 
     private static final String GET_ALL_LINKS_BY_GROUP_NAME = "SELECT Id, LinkName FROM " + tableName + " WHERE GroupName = ?";
     private static final String GET_ALL_LINKS_BY_USERS_CHAT_ID = "SELECT Id, LinkName, GroupName FROM " + tableName + " WHERE UsersChatId = ?";
-    private static final String GET_LINK_BY_LINK_NAME_AND_GROUP = "SELECT Link FROM " + tableName + " WHERE LinkName = ? AND GroupName = ?";
     private static final String ADD_NEW_LINK = "INSERT INTO " + tableName + " (LinkName, GroupName, Link, UsersChatId) values (?, ?, ?, ?)";
     private static final String GET_LINK_INFO_BY_ID = "SELECT Link FROM " + tableName + " WHERE Id = ?";
+    private static final String GET_USERS_CHAT_ID_BY_LINK_ID = "SELECT UsersChatId FROM " + tableName + " WHERE Id = ?";
     private static final String DELETE_LINK_BY_ID = "DELETE FROM " + tableName + " WHERE Id = ?";
 
     public void addLink(String linkName, String link, String groupName,  long chatId) {
@@ -38,17 +39,20 @@ public class LinksRepository {
         }
     }
 
-    public List<List<String>> getAllLinksByGroupName(String groupName) {
-        List<List<String>> links = new ArrayList<>();
+    public List<LinkDTO> getAllLinksByGroupName(String groupName) {
+        List<LinkDTO> links = new ArrayList<>();
         try (Connection connection = database.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(GET_ALL_LINKS_BY_GROUP_NAME)) {
             preparedStatement.setString(1, groupName);
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
-                String id = String.valueOf(resultSet.getLong(1));
+                long id = resultSet.getLong(1);
                 String linkName = resultSet.getNString(2);
-                List<String> link = new ArrayList<>(List.of(id, linkName));
-                links.add(link);
+                LinkDTO linkDTO = LinkDTO.builder()
+                        .id(id)
+                        .linkName(linkName)
+                        .build();
+                links.add(linkDTO);
             }
             return links;
         } catch (SQLException e) {
@@ -57,18 +61,22 @@ public class LinksRepository {
         return links;
     }
 
-    public List<List<String>> getAllLinksByUsersChatId(long chatId) {
-        List<List<String>> links = new ArrayList<>();
+    public List<LinkDTO> getAllLinksByUsersChatId(long chatId) {
+        List<LinkDTO> links = new ArrayList<>();
         try (Connection connection = database.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(GET_ALL_LINKS_BY_USERS_CHAT_ID)) {
             preparedStatement.setLong(1, chatId);
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
-                String id = String.valueOf(resultSet.getLong(1));
+                long id = resultSet.getLong(1);
                 String groupName = resultSet.getNString(2);
                 String linkName = resultSet.getNString(3);
-                List<String> link = new ArrayList<>(List.of(id, groupName, linkName));
-                links.add(link);
+                LinkDTO linkDTO = LinkDTO.builder()
+                                .id(id)
+                                .groupName(groupName)
+                                .linkName(linkName)
+                                .build();
+                links.add(linkDTO);
             }
             return links;
         } catch (SQLException e) {
@@ -77,19 +85,20 @@ public class LinksRepository {
         return links;
     }
 
-    public String getLinkByNameAndGroup(String linkName, String group) {
+    public long getUsersChatIdByLinkId(long linkId) {
+        System.err.println("getUsersChatIdByLinkId() linkId is : " + linkId);
         try (Connection connection = database.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(GET_LINK_BY_LINK_NAME_AND_GROUP)) {
-            preparedStatement.setString(1, linkName);
-            preparedStatement.setString(2, group);
+             PreparedStatement preparedStatement = connection.prepareStatement(GET_USERS_CHAT_ID_BY_LINK_ID)) {
+            preparedStatement.setLong(1, linkId);
             ResultSet resultSet = preparedStatement.executeQuery();
             if (resultSet.next()) {
-                return resultSet.getNString(1);
+                System.err.println("ResultSet isn't empty");
+                return resultSet.getLong(1);
             }
         } catch (SQLException e) {
-            System.err.printf("Error (LinksRepositoryClass (method getLinkByNameAndGroup(linkName : %s, group : %s)))%n%s%n", linkName, group, e);
+            System.err.printf("Error (LinksRepositoryClass (method getUsersChatIdByLinkId(data : %d))) %n%s%n", linkId, e);
         }
-        return null;
+        return -1;
     }
 
     public String getLinkById(long id) {

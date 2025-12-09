@@ -7,6 +7,7 @@ import org.example.database.repository.FileTrackerRepository;
 import org.example.database.repository.GroupRepository;
 import org.example.database.repository.LinksRepository;
 import org.example.dto.FileDTO;
+import org.example.dto.LinkDTO;
 import org.example.files.FilesController;
 import org.example.site.WebSite;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
@@ -247,12 +248,14 @@ public class MarkupSetter {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
         String group = key.replace("GroupForLinks", "");
-        List<List<String>> links = linksRepository.getAllLinksByGroupName(group);
-        for (List<String> link : links) {
-            String id = link.get(0);
-            String linkName = link.get(1);
-            InlineKeyboardButton button = ButtonSetter.setButton(linkName, id + "_lnk");
-            keyboard.add(ButtonSetter.setRow(button));
+        List<LinkDTO> links = linksRepository.getAllLinksByGroupName(group);
+        if (!links.isEmpty()) {
+            for (LinkDTO link : links) {
+                long id = link.getId();
+                String linkName = link.getLinkName();
+                InlineKeyboardButton button = ButtonSetter.setButton(linkName, id + "_lnk");
+                keyboard.add(ButtonSetter.setRow(button));
+            }
         }
         InlineKeyboardButton addLinkButton = ButtonSetter.setButton("Добавить ссылку", group + "AddLinkButton");
         keyboard.add(ButtonSetter.setRow(backButtonToLinks, addLinkButton));
@@ -306,10 +309,10 @@ public class MarkupSetter {
     private InlineKeyboardMarkup setDeleteLinksMarkup(long chatId) {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        List<List<String>> links = linksRepository.getAllLinksByUsersChatId(chatId);
-        for (List<String> link : links) {
-            String id = link.get(0);
-            String linkName = link.get(1);
+        List<LinkDTO> links = linksRepository.getAllLinksByUsersChatId(chatId);
+        for (LinkDTO link : links) {
+            long id = link.getId();
+            String linkName = link.getLinkName();
             InlineKeyboardButton button = ButtonSetter.setButton(linkName, id + "_LDel");
             keyboard.add(ButtonSetter.setRow(button));
         }
@@ -343,10 +346,10 @@ public class MarkupSetter {
     private InlineKeyboardMarkup setLinksForDeleteFromGroup(String group) {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        List<List<String>> links = linksRepository.getAllLinksByGroupName(group);
-        for (List<String> link : links) {
-            String id = link.get(0);
-            String linkName = link.get(1);
+        List<LinkDTO> links = linksRepository.getAllLinksByGroupName(group);
+        for (LinkDTO link : links) {
+            long id = link.getId();
+            String linkName = link.getLinkName();
             InlineKeyboardButton button = ButtonSetter.setButton(linkName, id + "_LDel");
             keyboard.add(ButtonSetter.setRow(button));
         }

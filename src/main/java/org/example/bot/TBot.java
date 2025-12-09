@@ -283,8 +283,15 @@ public class TBot extends TelegramLongPollingBot {
                 checkMessageBeforeResponse(chatId, "SimpleError");
             }
         } else if (data.endsWith("_lnk")) {
-            String link = data.replaceAll("_lnk$", "");
-            sendMessage = setSendMessage(chatId, "Вот ваша ссылка \n" + link, MarkupKey.NONE);
+            long linkId = Long.parseLong(data.replaceAll("_lnk$", ""));
+            String link = linksRepository.getLinkById(linkId);
+            if (adminRepository.getAdmin(userRepository.getUserName(chatId))) {
+                long userChatId = linksRepository.getUsersChatIdByLinkId(linkId);
+                sendMessage = setSendMessage(chatId, "Вот ваша ссылка \n" + link + "\nChatId отправителя: " + userChatId, MarkupKey.NONE);
+            } else {
+                System.err.println("UserNotAdmin");
+                sendMessage = setSendMessage(chatId, "Вот ваша ссылка \n" + link, MarkupKey.NONE);
+            }
             try {
                 execute(sendMessage);
             } catch (TelegramApiException e) {
@@ -753,7 +760,7 @@ public class TBot extends TelegramLongPollingBot {
             long id = Long.parseLong(data.replaceAll("_lnk$", ""));
             String link = linksRepository.getLinkById(id) + "_lnk";
 
-            sendNewMessageResponse(chatId, link);
+            sendNewMessageResponse(chatId, data);
             checkMessageBeforeResponse(chatId, "/start");
         } else if (data.contains("Year")) {
             message = setEditMessageWithoutMarkup(chatId, "Выберите вашу группу", messageId);
