@@ -86,13 +86,11 @@ public class LinksRepository {
     }
 
     public long getUsersChatIdByLinkId(long linkId) {
-        System.err.println("getUsersChatIdByLinkId() linkId is : " + linkId);
         try (Connection connection = database.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(GET_USERS_CHAT_ID_BY_LINK_ID)) {
             preparedStatement.setLong(1, linkId);
             ResultSet resultSet = preparedStatement.executeQuery();
             if (resultSet.next()) {
-                System.err.println("ResultSet isn't empty");
                 return resultSet.getLong(1);
             }
         } catch (SQLException e) {

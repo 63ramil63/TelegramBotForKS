@@ -289,7 +289,7 @@ public class TBot extends TelegramLongPollingBot {
                 long userChatId = linksRepository.getUsersChatIdByLinkId(linkId);
                 sendMessage = setSendMessage(chatId, "Вот ваша ссылка \n" + link + "\nChatId отправителя: " + userChatId, MarkupKey.NONE);
             } else {
-                System.err.println("UserNotAdmin");
+                System.err.println("UserNotAdmin " + chatId);
                 sendMessage = setSendMessage(chatId, "Вот ваша ссылка \n" + link, MarkupKey.NONE);
             }
             try {
@@ -755,10 +755,6 @@ public class TBot extends TelegramLongPollingBot {
             } catch (TelegramApiException e) {
                 System.err.printf("Error (TBotClass (sendEditMessageResponse(chatId : %d, data : %s)))%n%s%n", chatId, data, e);
             }
-
-            // Получение индекса для удаления метки и получения данных
-            long id = Long.parseLong(data.replaceAll("_lnk$", ""));
-            String link = linksRepository.getLinkById(id) + "_lnk";
 
             sendNewMessageResponse(chatId, data);
             checkMessageBeforeResponse(chatId, "/start");
