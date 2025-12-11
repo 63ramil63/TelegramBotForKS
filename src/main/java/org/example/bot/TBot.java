@@ -16,6 +16,7 @@ import org.example.files.exception.IncorrectExtensionException;
 import org.example.files.exception.InvalidCallbackDataException;
 import org.example.role.AdminRole;
 import org.example.schedule.ScheduleCache;
+import org.example.utility.LinkUtil;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
@@ -59,6 +60,12 @@ public class TBot extends TelegramLongPollingBot {
             "Чтобы сохранить файл, выберите путь и скиньте файл боту\n" +
             "Старайтесь не делать названия файлов и директории слишком большими, бот может дать сбой \n" +
             "Если столкнулись с проблемой, напишите в личку @wrotoftanks63";
+    private final String adminHelpResponse = """
+            Команды :
+            /sendToAll text - Отправляет всем пользователям бота сообщение с указанным текстом
+            /sendNotification text - Устанавливает текст при нажатии кнопки
+            /addAdmin username - Добавляет нового админа с базовыми правами
+            """;
 
     private final StringBuilder notification = new StringBuilder("Нет каких либо оповещений");
 
@@ -148,8 +155,8 @@ public class TBot extends TelegramLongPollingBot {
         }
     }
 
-    private boolean isValidLinkFormat(String input) {
-        return input != null && input.contains(":") && input.indexOf(":") > 1;
+    private boolean isAdmin(long chatId) {
+        return adminRepository.getAdmin(userRepository.getUserName(chatId));
     }
 
     private void sendNewMessageResponse(long chatId, String data) {
@@ -268,7 +275,7 @@ public class TBot extends TelegramLongPollingBot {
             FileDTO fileDTO = fileTrackerRepository.getFileInfoByFileId(fileId);
             MessageWithDocBuilder message = new MessageWithDocBuilder(chatId, fileDTO);
             SendDocument sendDocument = message.getMessage();
-            if (adminRepository.getAdmin(userRepository.getUserName(chatId))) {
+            if (isAdmin(chatId)) {
                 long userId = fileTrackerRepository.getFilesChatIdById(fileId);
                 String username = userRepository.getUserName(userId);
                 sendDocument.setCaption("Данный файл отправлен : " +
@@ -285,11 +292,10 @@ public class TBot extends TelegramLongPollingBot {
         } else if (data.endsWith("_lnk")) {
             long linkId = Long.parseLong(data.replaceAll("_lnk$", ""));
             String link = linksRepository.getLinkById(linkId);
-            if (adminRepository.getAdmin(userRepository.getUserName(chatId))) {
+            if (isAdmin(chatId)) {
                 long userChatId = linksRepository.getUsersChatIdByLinkId(linkId);
                 sendMessage = setSendMessage(chatId, "Вот ваша ссылка \n" + link + "\nChatId отправителя: " + userChatId, MarkupKey.NONE);
             } else {
-                System.err.println("UserNotAdmin " + chatId);
                 sendMessage = setSendMessage(chatId, "Вот ваша ссылка \n" + link, MarkupKey.NONE);
             }
             try {
@@ -297,7 +303,7 @@ public class TBot extends TelegramLongPollingBot {
             } catch (TelegramApiException e) {
                 System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
             }
-        } else if (isValidLinkFormat(data.trim())) {
+        } else if (LinkUtil.isValidLinkFormat(data.trim())) {
             if (userRepository.getCanAddLink(chatId)) {
                 String[] parts = data.split(":");
                 String linkName = parts[0].trim();
@@ -338,7 +344,7 @@ public class TBot extends TelegramLongPollingBot {
             }
         }
         if (data.contains("/sendToAll")) {
-            if (!adminRepository.getAdmin(userRepository.getUserName(chatId))) {
+            if (!isAdmin(chatId)) {
                 checkMessageBeforeResponse(chatId, "AdminError");
                 System.out.printf("Trying to access admin command without admin rights, chatId : %d%n", chatId);
                 return;
@@ -351,7 +357,7 @@ public class TBot extends TelegramLongPollingBot {
                 }
             }
         } else if (data.contains("/sendNotification")) {
-            if (!adminRepository.getAdmin(userRepository.getUserName(chatId))) {
+            if (!isAdmin(chatId)) {
                 checkMessageBeforeResponse(chatId, "AdminError");
                 System.out.printf("Trying to access admin command without admin rights, chatId : %d%n", chatId);
                 return;
@@ -363,7 +369,7 @@ public class TBot extends TelegramLongPollingBot {
                 checkMessageBeforeResponse(chatId, "/start");
             }
         } else if (data.contains("/addAdmin")) {
-            boolean isAdmin = adminRepository.getAdmin(userRepository.getUserName(chatId));
+            boolean isAdmin = isAdmin(chatId);
             String adminRole = adminRepository.getAdminRole(userRepository.getUserName(chatId));
             if (!isAdmin || !adminRole.equals(AdminRole.Main.toString())) {
                 checkMessageBeforeResponse(chatId, "AdminError");
@@ -411,7 +417,7 @@ public class TBot extends TelegramLongPollingBot {
             String folder = target.substring(0, delimiterIndex);
             String file = target.substring(delimiterIndex + 1);
             fileTrackerRepository.putFileInfo(chatId, folder, file);
-            System.out.printf("Сохранен документ от пользователя %d%nДокумент: %s%n", chatId, document.getFileName());
+            System.out.printf("Сохранен документ от пользователя %d%nДокумент: %s/%s%n", chatId, folder, document.getFileName());
             checkMessageBeforeResponse(chatId, "DocumentSaved");
         } else {
             checkMessageBeforeResponse(chatId, "SimpleError");
@@ -459,7 +465,11 @@ public class TBot extends TelegramLongPollingBot {
         EditMessageText message;
         switch (data) {
             case "Help" -> {
-                message = setEditMessageWithoutMarkup(chatId, helpResponse, messageId);
+                if (isAdmin(chatId)) {
+                    message = setEditMessageWithoutMarkup(chatId, adminHelpResponse, messageId);
+                } else {
+                    message = setEditMessageWithoutMarkup(chatId, helpResponse, messageId);
+                }
                 try {
                     message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
                     execute(message);
