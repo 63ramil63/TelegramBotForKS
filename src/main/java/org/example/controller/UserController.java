@@ -20,6 +20,10 @@ public class UserController {
         return adminRepository.getAdmin(username);
     }
 
+    public boolean checkAdminByChatId(long chatId) {
+        return adminRepository.getAdmin(userRepository.getUserName(chatId));
+    }
+
     // Для суперадминов
     public void addAdminsFromProperty(List<String> adminsUserName) {
         for (String adminUsername : adminsUserName) {

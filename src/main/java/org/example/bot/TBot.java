@@ -156,7 +156,7 @@ public class TBot extends TelegramLongPollingBot {
     }
 
     private boolean isAdmin(long chatId) {
-        return adminRepository.getAdmin(userRepository.getUserName(chatId));
+        return userController.checkAdminByChatId(chatId);
     }
 
     private void sendNewMessageResponse(long chatId, String data) {
