@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -177,5 +178,17 @@ public class FilesController {
         String normalizedPath = path + rawFilePath;
         Path file = Path.of(normalizedPath);
         Files.delete(file);
+    }
+
+    public void deleteFolderWithFiles(String folder) throws IOException {
+        List<FileDTO> filesInDB = fileTrackerRepository.getFilesByFolderName(folder);
+        if (!filesInDB.isEmpty()) {
+            for (FileDTO fileInDB : filesInDB) {
+                fileTrackerRepository.deleteUserFileFromRepository(fileInDB.getId());
+                deleteFile(fileInDB.getFolder() + delimiter + fileInDB.getFileName());
+            }
+        }
+        deleteFile(folder);
+        folderRepository.deleteFolder(folder);
     }
 }

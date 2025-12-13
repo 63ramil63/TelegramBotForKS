@@ -4,6 +4,7 @@ import org.example.bot.TBot;
 import org.example.bot.message.markup.button.ButtonSetter;
 import org.example.controller.UserController;
 import org.example.database.repository.FileTrackerRepository;
+import org.example.database.repository.FolderRepository;
 import org.example.database.repository.GroupRepository;
 import org.example.database.repository.LinksRepository;
 import org.example.dto.FileDTO;
@@ -21,6 +22,7 @@ public class MarkupSetter {
 
     private final FilesController filesController;
     private final FileTrackerRepository fileTrackerRepository;
+    private final FolderRepository folderRepository;
     private final UserController userController;
 
     private final LinksRepository linksRepository;
@@ -33,9 +35,10 @@ public class MarkupSetter {
     private static InlineKeyboardButton backButtonToLessons;
 
     public MarkupSetter(FilesController filesController, FileTrackerRepository fileTrackerRepository,
-                        UserController userController, LinksRepository linksRepository, GroupRepository groupRepository) {
+                        FolderRepository folderRepository, UserController userController, LinksRepository linksRepository, GroupRepository groupRepository) {
         this.filesController = filesController;
         this.fileTrackerRepository = fileTrackerRepository;
+        this.folderRepository = folderRepository;
         this.userController = userController;
         this.linksRepository = linksRepository;
         this.groupRepository = groupRepository;
@@ -358,6 +361,33 @@ public class MarkupSetter {
         return markup;
     }
 
+    private InlineKeyboardMarkup setDeleteFolders() throws IllegalArgumentException {
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+        List<String> folders = folderRepository.getFolders();
+
+        if (folders != null && !folders.isEmpty()) {
+            for (String folder : folders) {
+                InlineKeyboardButton button = ButtonSetter.setButton(folder, folder + "_DFolder");
+                keyboard.add(ButtonSetter.setRow(button));
+            }
+        }
+        keyboard.add(ButtonSetter.setRow(backButtonToFiles));
+        markup.setKeyboard(keyboard);
+        return markup;
+    }
+
+    private InlineKeyboardMarkup folderCase(String key) throws IllegalArgumentException {
+        if (key.equals("/delete_Folder")) {
+            return setDeleteFolders();
+        } else if (key.contains("_Folder")) {
+            key = key.replace("_Folder", "");
+            return getFilesFromFolderMarkup(key);
+        }
+        throw new IllegalArgumentException("Illegal argument(key) in method folderCase() MarkupSetterClass() \n " +
+                "Argument is : " + key);
+    }
+
     private InlineKeyboardMarkup fileCase(String key) throws IllegalArgumentException {
         if (key.equals("FileButton")) {
             return getFoldersFromDatabaseMarkup();
@@ -386,8 +416,7 @@ public class MarkupSetter {
 
     public InlineKeyboardMarkup getChangeableMarkup(String key) throws IllegalArgumentException {
         if (key.contains("_Folder")) {
-            key = key.replace("_Folder", "");
-            return getFilesFromFolderMarkup(key);
+            return folderCase(key);
         } else if (key.contains("File") && !key.contains("Links")) {
             return fileCase(key);
         } else if (key.contains("Link")) {

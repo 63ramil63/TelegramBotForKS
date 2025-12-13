@@ -30,6 +30,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.*;
 
@@ -65,6 +66,7 @@ public class TBot extends TelegramLongPollingBot {
             /sendToAll text - Отправляет всем пользователям бота сообщение с указанным текстом
             /sendNotification text - Устанавливает текст при нажатии кнопки
             /addAdmin username - Добавляет нового админа с базовыми правами
+            /delete_Folder - дает клавиатуру с папки для удаления из бд и файловой системы
             """;
 
     private final StringBuilder notification = new StringBuilder("Нет каких либо оповещений");
@@ -111,7 +113,7 @@ public class TBot extends TelegramLongPollingBot {
         userController = new UserController(userRepository, adminRepository);
         groupRepository = new GroupRepository();
         linksRepository = new LinksRepository();
-        markupSetter = new MarkupSetter(filesController, fileTrackerRepository, userController, linksRepository, groupRepository);
+        markupSetter = new MarkupSetter(filesController, fileTrackerRepository, folderRepository, userController, linksRepository, groupRepository);
         userController.addAdminsFromProperty(adminsFromProperty);
         filesController.synchronizeFoldersWithDatabase();
         filesController.synchronizeFilesWithDatabase();
@@ -132,12 +134,19 @@ public class TBot extends TelegramLongPollingBot {
         }
     }
 
-    private SendMessage setSendMessage(long chatId, String data, MarkupKey key) {
+    private SendMessage setSendMessageWithDefaultMarkup(long chatId, String data, MarkupKey key) {
         MessageBuilder messageBuilder = new MessageBuilder(data, chatId);
         SendMessage sendMessage = messageBuilder.getMessage();
         if (key != MarkupKey.NONE) {
             sendMessage.setReplyMarkup(markupSetter.getBasicMarkup(key));
         }
+        return sendMessage;
+    }
+
+    private SendMessage setSendMessageWithChangeableMarkup(long chatId, String data, String markupKey) throws IllegalArgumentException {
+        MessageBuilder messageBuilder = new MessageBuilder(data, chatId);
+        SendMessage sendMessage = messageBuilder.getMessage();
+        sendMessage.setReplyMarkup(markupSetter.getChangeableMarkup(markupKey));
         return sendMessage;
     }
 
@@ -163,7 +172,7 @@ public class TBot extends TelegramLongPollingBot {
         SendMessage sendMessage;
         switch (data) {
             case "DocumentSaved" -> {
-                sendMessage = setSendMessage(chatId, "Файл сохранен", MarkupKey.MainMenu);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Файл сохранен", MarkupKey.MainMenu);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -173,7 +182,7 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "IncorrectFileExtension" -> {
-                sendMessage = setSendMessage(chatId, "Неверный формат файла, попробуйте поменять название или тип файла", MarkupKey.MainMenu);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Неверный формат файла, попробуйте поменять название или тип файла", MarkupKey.MainMenu);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -183,7 +192,7 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "FileTooBig" -> {
-                sendMessage = setSendMessage(chatId, "Файл слишком большой!", MarkupKey.MainMenu);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Файл слишком большой!", MarkupKey.MainMenu);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -193,7 +202,7 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "FolderAdded" -> {
-                sendMessage = setSendMessage(chatId, "Папка сохранена", MarkupKey.MainMenu);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Папка сохранена", MarkupKey.MainMenu);
                 // Убираем статус создания папки
                 userRepository.updateCanAddFolder(chatId, (byte) 0);
                 try {
@@ -205,7 +214,7 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "SimpleError" -> {
-                sendMessage = setSendMessage(chatId, "Произошла неизвестная ошибка", MarkupKey.MainMenu);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Произошла неизвестная ошибка", MarkupKey.MainMenu);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -214,7 +223,7 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "AdminError" -> {
-                sendMessage = setSendMessage(chatId, "У вас нет прав на использование команды", MarkupKey.MainMenu);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "У вас нет прав на использование команды", MarkupKey.MainMenu);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -223,7 +232,7 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "AdminAdded" -> {
-                sendMessage = setSendMessage(chatId, "Админ добавлен", MarkupKey.MainMenu);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Админ добавлен", MarkupKey.MainMenu);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -232,7 +241,7 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "PathCheckError" -> {
-                sendMessage = setSendMessage(chatId, "Для хранения файлов выберите папку своей группы", MarkupKey.MainMenu);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Для хранения файлов выберите папку своей группы", MarkupKey.MainMenu);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -241,7 +250,7 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "InvalidFileName" -> {
-                sendMessage = setSendMessage(chatId, "Возникла ошибка, название файла слишком большое, сделайте его поменьше и попытайтесь снова", MarkupKey.MainMenu);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Возникла ошибка, название файла слишком большое, сделайте его поменьше и попытайтесь снова", MarkupKey.MainMenu);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -251,7 +260,7 @@ public class TBot extends TelegramLongPollingBot {
             }
             case "LinkSaved" -> {
                 userRepository.updateCanAddLink(chatId, (byte) 0);
-                sendMessage = setSendMessage(chatId, "Ссылка сохранена!", MarkupKey.MainMenu);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Ссылка сохранена!", MarkupKey.MainMenu);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -261,7 +270,7 @@ public class TBot extends TelegramLongPollingBot {
             }
             case "GroupSaved" -> {
                 userRepository.updateCanAddGroup(chatId, (byte) 0);
-                sendMessage = setSendMessage(chatId, "Новая группа сохранена", MarkupKey.MainMenu);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Новая группа сохранена", MarkupKey.MainMenu);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -294,9 +303,9 @@ public class TBot extends TelegramLongPollingBot {
             String link = linksRepository.getLinkById(linkId);
             if (isAdmin(chatId)) {
                 long userChatId = linksRepository.getUsersChatIdByLinkId(linkId);
-                sendMessage = setSendMessage(chatId, "Вот ваша ссылка \n" + link + "\nChatId отправителя: " + userChatId, MarkupKey.NONE);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Вот ваша ссылка \n" + link + "\nChatId отправителя: " + userChatId, MarkupKey.NONE);
             } else {
-                sendMessage = setSendMessage(chatId, "Вот ваша ссылка \n" + link, MarkupKey.NONE);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Вот ваша ссылка \n" + link, MarkupKey.NONE);
             }
             try {
                 execute(sendMessage);
@@ -333,7 +342,7 @@ public class TBot extends TelegramLongPollingBot {
         SendMessage sendMessage;
         switch (data) {
             case "/start" -> {
-                sendMessage = setSendMessage(chatId, "Выберите функцию", MarkupKey.MainMenu);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Выберите функцию", MarkupKey.MainMenu);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -341,6 +350,15 @@ public class TBot extends TelegramLongPollingBot {
                     checkMessageBeforeResponse(chatId, "SimpleError");
                 }
                 return;
+            }
+            case "/delete_Folder" -> {
+                try {
+                    sendMessage = setSendMessageWithChangeableMarkup(chatId, "Выберите папку, которую хотите удалить вместе с файлами внутри", data);
+                    execute(sendMessage);
+                } catch (TelegramApiException | IllegalArgumentException e) {
+                    System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e);
+                    checkMessageBeforeResponse(chatId, "SimpleError");
+                }
             }
         }
         if (data.contains("/sendToAll")) {
@@ -704,6 +722,21 @@ public class TBot extends TelegramLongPollingBot {
                 }
             } else {
                 sendEditMessageResponse(chatId, "ErrorDeleteLinks", messageId);
+            }
+        } else if (data.endsWith("_DFolder")) {
+            String folder = data.replaceAll("_DFolder$", "");
+            if (folderRepository.deleteFolder(folder)) {
+                try {
+                    filesController.deleteFolderWithFiles(folder);
+                    message = setEditMessageWithoutMarkup(chatId, "Папка успешно удалена", messageId);
+                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
+                    execute(message);
+                } catch (IOException | TelegramApiException e) {
+                    System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
+                    sendEditMessageResponse(chatId, "SimpleError", messageId);
+                }
+            } else {
+                sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
         } else if (data.endsWith("_LinkFlrDel")) {
             message = setEditMessageWithoutMarkup(chatId, "Выберите ссылку, которую хотите удалить", messageId);

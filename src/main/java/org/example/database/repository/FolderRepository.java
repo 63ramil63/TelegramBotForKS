@@ -16,6 +16,7 @@ public class FolderRepository {
     private static final String ADD_FOLDER = "INSERT INTO " + tableName + " (Folder) values (?)";
     private static final String GET_ALL_FOLDERS = "SELECT Folder FROM " + tableName;
     private static final String GET_FOLDER_BY_NAME = "SELECT Folder FROM " + tableName + " WHERE Folder = ?";
+    private static final String DELETE_FOLDER_BY_NAME = "DELETE FROM " + tableName + " WHERE Folder = ?";
 
     public boolean addFolder(String folderName) {
         try (Connection connection = databaseConnection.getConnection();
@@ -58,5 +59,17 @@ public class FolderRepository {
             System.err.println("Error (FolderRepositoryClass (method getFolders())) " + e);
         }
         return folders;
+    }
+
+    public boolean deleteFolder(String folder) {
+        try (Connection connection = databaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(DELETE_FOLDER_BY_NAME)) {
+            preparedStatement.setString(1, folder);
+            int rowsAffected = preparedStatement.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error (FolderRepositoryClass (method deleteFolder())) " + e);
+        }
+        return false;
     }
 }
