@@ -9,12 +9,13 @@ import java.sql.SQLException;
 public class TableBuilder {
     private final Database dataBaseConnection;
     private final String CREATE_USERS_TABLE_SQL;
-    private final String CREATE_FOLDER_TRACKING_SQL;
-    private final String CREATE_FILE_TRACKING_SQL;
-    private final String CREATE_FILES_HISTORY_SQL;
+    private final String CREATE_FOLDER_TRACKING_TABLE_SQL;
+    private final String CREATE_FILE_TRACKING_TABLE_SQL;
+    private final String CREATE_FILES_HISTORY_TABLE_SQL;
     private final String CREATE_ADMINS_TABLE_SQL;
     private final String CREATE_LINKS_TABLE_SQL;
-    private final String CREATE_GROUP_TABLES_SQL;
+    private final String CREATE_GROUP_TABLE_SQL;
+    private final String CREATE_LINKS_HISTORY_TABLE_SQL;
 
     public TableBuilder() {
         dataBaseConnection = Database.getInstance();
@@ -30,12 +31,12 @@ public class TableBuilder {
                 GroupForLinks NVARCHAR(10) NULL,
                 PRIMARY KEY (ChatId))
                 """;
-        CREATE_FOLDER_TRACKING_SQL = """
+        CREATE_FOLDER_TRACKING_TABLE_SQL = """
                 CREATE TABLE IF NOT EXISTS folder_tracker(
                 Folder NVARCHAR(15) NOT NULL,
                 PRIMARY KEY(Folder))
                 """;
-        CREATE_FILE_TRACKING_SQL = """
+        CREATE_FILE_TRACKING_TABLE_SQL = """
                 CREATE TABLE IF NOT EXISTS file_tracker (
                 Id BIGINT NOT NULL AUTO_INCREMENT,
                 ChatId BIGINT NOT NULL,
@@ -43,7 +44,7 @@ public class TableBuilder {
                 FileName NVARCHAR(100) NOT NULL,
                 PRIMARY KEY (Id))
                 """;
-        CREATE_FILES_HISTORY_SQL = """
+        CREATE_FILES_HISTORY_TABLE_SQL = """
                 CREATE TABLE IF NOT EXISTS files_history(
                 Id BIGINT NOT NULL AUTO_INCREMENT,
                 ChatId BIGINT NOT NULL,
@@ -60,15 +61,24 @@ public class TableBuilder {
                 CREATE TABLE IF NOT EXISTS links(
                 Id BIGINT NOT NULL AUTO_INCREMENT,
                 LinkName NVARCHAR(50) NOT NULL,
-                GroupName NVARCHAR(10) NOT NULL,
+                GroupName NVARCHAR(20) NOT NULL,
                 Link NVARCHAR(255) NOT NULL,
                 UsersChatId BIGINT NOT NULL,
                 PRIMARY KEY(Id))
                 """;
-        CREATE_GROUP_TABLES_SQL = """
+        CREATE_GROUP_TABLE_SQL = """
                 CREATE TABLE IF NOT EXISTS edu_groups(
                 GroupName NVARCHAR(10) NOT NULL UNIQUE
                 )
+                """;
+        CREATE_LINKS_HISTORY_TABLE_SQL = """
+                CREATE TABLE IF NOT EXISTS links_history(
+                Id BIGINT NOT NULL AUTO_INCREMENT,
+                LinkName NVARCHAR(50) NOT NULL,
+                GroupName NVARCHAR(20) NOT NULL,
+                Link NVARCHAR(255) NOT NULL,
+                UsersChatId BIGINT NOT NULL,
+                PRIMARY KEY (Id))
                 """;
     }
 
@@ -93,11 +103,12 @@ public class TableBuilder {
 
     public void createTables() {
         executeSQL(CREATE_USERS_TABLE_SQL, "USERS");
-        executeSQL(CREATE_FOLDER_TRACKING_SQL, "FOLDER TRACKING");
-        executeSQL(CREATE_FILE_TRACKING_SQL, "FILE TRACKING");
-        executeSQL(CREATE_FILES_HISTORY_SQL, "FILES HISTORY");
+        executeSQL(CREATE_FOLDER_TRACKING_TABLE_SQL, "FOLDER TRACKING");
+        executeSQL(CREATE_FILE_TRACKING_TABLE_SQL, "FILE TRACKING");
+        executeSQL(CREATE_FILES_HISTORY_TABLE_SQL, "FILES HISTORY");
         executeSQL(CREATE_ADMINS_TABLE_SQL, "ADMINS");
         executeSQL(CREATE_LINKS_TABLE_SQL, "LINKS TABLE");
-        executeSQL(CREATE_GROUP_TABLES_SQL, "GROUPS TABLE");
+        executeSQL(CREATE_GROUP_TABLE_SQL, "GROUPS TABLE");
+        executeSQL(CREATE_LINKS_HISTORY_TABLE_SQL, "LINKS HISTORY TABLE");
     }
 }
