@@ -26,6 +26,24 @@ public class FileTrackerRepository {
     private static final String DELETE_USER_FILE_BY_ID = "DELETE FROM " + tableName + " WHERE Id = ?";
     private static final String GET_FILE_INFO_BY_FILE_ID = "SELECT Folder, FileName FROM " + tableName + " WHERE Id = ?";
 
+    public void putFileInfoToFilesHistory(long chatId, String folder, String fileName) {
+        try (Connection connection = databaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(PUT_FILE_INFO_TO_FILES_HISTORY)) {
+            // Для таблицы истории файлов
+            preparedStatement.setLong(1, chatId);
+            preparedStatement.setString(2, folder + "/" + fileName);
+            int rowsAffected = preparedStatement.executeUpdate();
+            if (rowsAffected > 0) {
+                System.out.println("Add file info in history for file " + folder + "/" + fileName);
+            } else {
+                System.err.println("Error add file info in history  " + folder + "/" + fileName);
+            }
+        } catch (SQLException e) {
+            System.err.printf("Error (FileTrackerRepositoryClass (method putFileInfoToFilesHistory(chatId : %d, folder : %s, fileName : %s)))%n",
+                    chatId, folder, fileName);
+        }
+    }
+
     public void putFileInfo(long chatId, String folder, String fileName) {
         try (Connection connection = databaseConnection.getConnection();
              PreparedStatement preparedStatement1 = connection.prepareStatement(PUT_FILE_INFO);
@@ -40,16 +58,7 @@ public class FileTrackerRepository {
             } else {
                 System.err.println("Error add file info " + folder + " / " + fileName);
             }
-
-            // Для таблицы истории файлов
-            preparedStatement2.setLong(1, chatId);
-            preparedStatement2.setString(2, folder + "/" + fileName);
-            rowsAffected = preparedStatement2.executeUpdate();
-            if (rowsAffected > 0) {
-                System.out.println("Add file info in history for file " + folder + "/" + fileName);
-            } else {
-                System.err.println("Error add file info in history  " + folder + "/" + fileName);
-            }
+            putFileInfoToFilesHistory(chatId, folder, fileName);
         } catch (SQLException e) {
             System.err.printf("Error (FileTrackerRepositoryClass (method putFileInfo(chatId : %d, folder : %s, fileName : %s)))%n",
                     chatId, folder, fileName);

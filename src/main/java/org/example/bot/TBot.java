@@ -332,6 +332,7 @@ public class TBot extends TelegramLongPollingBot {
             } else {
                 String folderName = data.trim();
                 filesController.addFolder(folderName);
+                fileTrackerRepository.putFileInfoToFilesHistory(chatId, folderName, "");
                 sendNewMessageResponse(chatId, "FolderAdded");
             }
         }
