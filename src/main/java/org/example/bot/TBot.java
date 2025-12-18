@@ -352,13 +352,18 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "/delete_Folder" -> {
-                try {
-                    sendMessage = setSendMessageWithChangeableMarkup(chatId, "Выберите папку, которую хотите удалить вместе с файлами внутри", data);
-                    execute(sendMessage);
-                } catch (TelegramApiException | IllegalArgumentException e) {
-                    System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e);
-                    checkMessageBeforeResponse(chatId, "SimpleError");
+                if (isAdmin(chatId)) {
+                    try {
+                        sendMessage = setSendMessageWithChangeableMarkup(chatId, "Выберите папку, которую хотите удалить вместе с файлами внутри", data);
+                        execute(sendMessage);
+                    } catch (TelegramApiException | IllegalArgumentException e) {
+                        System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e);
+                        checkMessageBeforeResponse(chatId, "SimpleError");
+                    }
+                } else {
+                    sendNewMessageResponse(chatId, "AdminError");
                 }
+                return;
             }
         }
         if (data.contains("/sendToAll")) {
