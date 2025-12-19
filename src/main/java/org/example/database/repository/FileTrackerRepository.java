@@ -46,8 +46,7 @@ public class FileTrackerRepository {
 
     public void putFileInfo(long chatId, String folder, String fileName) {
         try (Connection connection = databaseConnection.getConnection();
-             PreparedStatement preparedStatement1 = connection.prepareStatement(PUT_FILE_INFO);
-             PreparedStatement preparedStatement2 = connection.prepareStatement(PUT_FILE_INFO_TO_FILES_HISTORY)) {
+             PreparedStatement preparedStatement1 = connection.prepareStatement(PUT_FILE_INFO)) {
             // Для основной таблицы
             preparedStatement1.setLong(1, chatId);
             preparedStatement1.setNString(2, folder);
