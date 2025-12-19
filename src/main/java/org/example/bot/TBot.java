@@ -29,8 +29,8 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.*;
 
@@ -408,7 +408,7 @@ public class TBot extends TelegramLongPollingBot {
     }
 
     private void checkMessageBeforeResponse(long chatId, String data) {
-        System.out.printf("checkMessageBeforeResponse(chatId : %d | data : %s)%n", chatId, data);
+        System.out.printf("checkMessageBeforeResponse(chatId : %d | data : %s) %tF %<tT%n", chatId, data, LocalDateTime.now());
         //Фикс для Unix систем
         if (data.charAt(0) == '/') {
             sendNewMessageResponseOnCommand(chatId, data);
@@ -485,7 +485,7 @@ public class TBot extends TelegramLongPollingBot {
     }
 
     private void sendEditMessageResponse(long chatId, String data, int messageId) {
-        System.out.printf("sendEditMessageResponse(chatId : %d | data : %s | messageId : %d)%n", chatId, data, messageId);
+        System.out.printf("sendEditMessageResponse(chatId : %d | data : %s | messageId : %d) %tF %<tT%n", chatId, data, messageId, LocalDateTime.now());
         EditMessageText message;
         switch (data) {
             case "Help" -> {
@@ -537,26 +537,34 @@ public class TBot extends TelegramLongPollingBot {
                 }
             }
             case "AddFolderButton" -> {
-                userRepository.updateCanAddFolder(chatId, (byte) 1);
-                message = setEditMessageWithoutMarkup(chatId, "Отправьте название папки", messageId);
-                try {
-                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
-                    execute(message);
-                } catch (TelegramApiException | IllegalArgumentException e) {
-                    System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
-                    sendEditMessageResponse(chatId, "SimpleError", messageId);
+                if (isAdmin(chatId)) {
+                    userRepository.updateCanAddFolder(chatId, (byte) 1);
+                    message = setEditMessageWithoutMarkup(chatId, "Отправьте название папки", messageId);
+                    try {
+                        message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK_TO_FILES));
+                        execute(message);
+                    } catch (TelegramApiException | IllegalArgumentException e) {
+                        System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
+                        sendEditMessageResponse(chatId, "SimpleError", messageId);
+                    }
+                } else {
+                    sendEditMessageResponse(chatId, "AdminError", messageId);
                 }
                 return;
             }
             case "AddGroupButton" -> {
-                userRepository.updateCanAddGroup(chatId, (byte) 1);
-                message = setEditMessageWithoutMarkup(chatId, "Отправьте название группы", messageId);
-                try {
-                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK));
-                    execute(message);
-                } catch (TelegramApiException | IllegalArgumentException e) {
-                    System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
-                    sendEditMessageResponse(chatId, "SimpleError", messageId);
+                if (isAdmin(chatId)) {
+                    userRepository.updateCanAddGroup(chatId, (byte) 1);
+                    message = setEditMessageWithoutMarkup(chatId, "Отправьте название группы", messageId);
+                    try {
+                        message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK));
+                        execute(message);
+                    } catch (TelegramApiException | IllegalArgumentException e) {
+                        System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
+                        sendEditMessageResponse(chatId, "SimpleError", messageId);
+                    }
+                } else {
+                    sendEditMessageResponse(chatId, "AdminError", messageId);
                 }
                 return;
             }
@@ -674,6 +682,16 @@ public class TBot extends TelegramLongPollingBot {
             }
             case "SimpleError" -> {
                 message = setEditMessageWithoutMarkup(chatId, "Произошла неожиданная ошибка", messageId);
+                try {
+                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
+                    execute(message);
+                } catch (TelegramApiException | IllegalArgumentException e) {
+                    System.err.println("Error (TBotClass (method sendEditMessageResponse(SelectYearButtons))) " + e);
+                }
+                return;
+            }
+            case "AdminError" -> {
+                message = setEditMessageWithoutMarkup(chatId, "У вас нет прав для этого действия", messageId);
                 try {
                     message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
                     execute(message);
