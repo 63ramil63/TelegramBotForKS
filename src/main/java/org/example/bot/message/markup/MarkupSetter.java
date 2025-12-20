@@ -8,6 +8,7 @@ import org.example.database.repository.FolderRepository;
 import org.example.database.repository.GroupRepository;
 import org.example.database.repository.LinksRepository;
 import org.example.dto.FileDTO;
+import org.example.dto.FolderDTO;
 import org.example.dto.LinkDTO;
 import org.example.files.FilesController;
 import org.example.site.WebSite;
@@ -186,10 +187,12 @@ public class MarkupSetter {
     private InlineKeyboardMarkup setSelectFolderToDeleteFilesByAdmin() {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        List<String> folders = filesController.getFoldersFromTable();
+        List<FolderDTO> folders = folderRepository.getFolders();
         if (folders != null && !folders.isEmpty()) {
-            for (String folder : folders) {
-                InlineKeyboardButton button = ButtonSetter.setButton(folder, folder + "FilesDelAdm");
+            for (FolderDTO folder : folders) {
+                long id = folder.getId();
+                String folderName = folder.getFolder();
+                InlineKeyboardButton button = ButtonSetter.setButton(folderName, id + "FilesDelAdm");
                 keyboard.add(ButtonSetter.setRow(button));
             }
         }
@@ -199,10 +202,11 @@ public class MarkupSetter {
     }
 
     // Задание клавиатуры для удаления файлов админом
-    private InlineKeyboardMarkup setDeleteFilesFromFolderByAdm(String folder) {
+    private InlineKeyboardMarkup setDeleteFilesFromFolderByAdm(long id) {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        List<FileDTO> files = filesController.getFilesFromDatabaseByFolder(folder);
+        String folderName = folderRepository.getFolderNameById(id);
+        List<FileDTO> files = fileTrackerRepository.getFilesByFolderName(folderName);
         if (files != null && !files.isEmpty()) {
             for (FileDTO file : files) {
                 long fileId = file.getId();
@@ -226,8 +230,8 @@ public class MarkupSetter {
                 return setDeleteUserFilesMarkup(chatId);
             }
         } else if (key.contains("FilesDelAdm")) {
-            String folder = key.replaceAll("FilesDelAdm", "");
-            return setDeleteFilesFromFolderByAdm(folder);
+            long folderId = Long.parseLong(key.replaceAll("FilesDelAdm", ""));
+            return setDeleteFilesFromFolderByAdm(folderId);
         }
         return getBasicMarkup(MarkupKey.MainMenu);
     }
@@ -293,10 +297,11 @@ public class MarkupSetter {
     private InlineKeyboardMarkup getFoldersFromDatabaseMarkup() {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        List<String> folders = filesController.getFoldersFromTable();
+        List<FolderDTO> folders = folderRepository.getFolders();
         if (folders != null && !folders.isEmpty()) {
-            for (String folder : folders) {
-                keyboard.add(setRowForFolder(folder));
+            for (FolderDTO folder : folders) {
+                String folderName = folder.getFolder();
+                keyboard.add(setRowForFolder(folderName));
             }
         }
         InlineKeyboardButton deleteButton = ButtonSetter.setButton("Удалить файл", "DeleteFileButton");
@@ -324,7 +329,7 @@ public class MarkupSetter {
         return markup;
     }
 
-    private InlineKeyboardMarkup setSelectFolderToDeleteLinksByAdminMarkup() {
+    private InlineKeyboardMarkup setSelectGroupToDeleteLinksByAdminMarkup() {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
         List<String> folders = groupRepository.getAllGroups();
@@ -340,7 +345,7 @@ public class MarkupSetter {
     private InlineKeyboardMarkup checkAdminBeforeSetDeleteLinksMarkup(String key) {
         long chatId = Long.parseLong(key.replaceAll("DeleteLinksButton", ""));
         if (userIsAdmin(chatId)) {
-            return setSelectFolderToDeleteLinksByAdminMarkup();
+            return setSelectGroupToDeleteLinksByAdminMarkup();
         } else {
             return setDeleteLinksMarkup(chatId);
         }
@@ -364,11 +369,13 @@ public class MarkupSetter {
     private InlineKeyboardMarkup setDeleteFolders() throws IllegalArgumentException {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        List<String> folders = folderRepository.getFolders();
+        List<FolderDTO> folders = folderRepository.getFolders();
 
         if (folders != null && !folders.isEmpty()) {
-            for (String folder : folders) {
-                InlineKeyboardButton button = ButtonSetter.setButton(folder, folder + "_DFolder");
+            for (FolderDTO folder : folders) {
+                long folderId = folder.getId();
+                String folderName = folder.getFolder();
+                InlineKeyboardButton button = ButtonSetter.setButton(folderName, folderId + "_DFolder");
                 keyboard.add(ButtonSetter.setRow(button));
             }
         }

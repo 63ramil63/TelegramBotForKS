@@ -748,10 +748,11 @@ public class TBot extends TelegramLongPollingBot {
                 sendEditMessageResponse(chatId, "ErrorDeleteLinks", messageId);
             }
         } else if (data.endsWith("_DFolder")) {
-            String folder = data.replaceAll("_DFolder$", "");
-            if (folderRepository.deleteFolder(folder)) {
+            long id = Long.parseLong(data.replaceAll("_DFolder$", ""));
+            if (folderRepository.deleteFolderById(id)) {
                 try {
-                    filesController.deleteFolderWithFiles(folder);
+                    String folderName = folderRepository.getFolderNameById(id);
+                    filesController.deleteFolderWithFiles(folderName);
                     message = setEditMessageWithoutMarkup(chatId, "Папка успешно удалена", messageId);
                     message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
                     execute(message);

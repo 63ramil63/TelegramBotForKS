@@ -33,8 +33,9 @@ public class TableBuilder {
                 """;
         CREATE_FOLDER_TRACKING_TABLE_SQL = """
                 CREATE TABLE IF NOT EXISTS folder_tracker(
-                Folder NVARCHAR(15) NOT NULL,
-                PRIMARY KEY(Folder))
+                Id BIGINT NOT NULL AUTO_INCREMENT,
+                Folder NVARCHAR(15) NOT NULL UNIQUE,
+                PRIMARY KEY(Id))
                 """;
         CREATE_FILE_TRACKING_TABLE_SQL = """
                 CREATE TABLE IF NOT EXISTS file_tracker (
@@ -68,7 +69,9 @@ public class TableBuilder {
                 """;
         CREATE_GROUP_TABLE_SQL = """
                 CREATE TABLE IF NOT EXISTS edu_groups(
-                GroupName NVARCHAR(10) NOT NULL UNIQUE
+                Id BIGINT NOT NULL AUTO_INCREMENT,
+                GroupName NVARCHAR(10) NOT NULL UNIQUE,
+                PRIMARY KEY(Id)
                 )
                 """;
         CREATE_LINKS_HISTORY_TABLE_SQL = """

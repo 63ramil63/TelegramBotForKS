@@ -42,10 +42,6 @@ public class FilesController {
         this.maxFileSize = maxFileSize;
     }
 
-    public List<String> getFoldersFromTable() {
-        return folderRepository.getFolders();
-    }
-
     private List<String> getFoldersFromPath() throws IOException{
         List<String> folders = new ArrayList<>();
         try (Stream<Path> paths = Files.list(Path.of(this.path))) {
@@ -188,6 +184,6 @@ public class FilesController {
             }
         }
         deleteFile(folder);
-        folderRepository.deleteFolder(folder);
+        folderRepository.deleteFolderByName(folder);
     }
 }
