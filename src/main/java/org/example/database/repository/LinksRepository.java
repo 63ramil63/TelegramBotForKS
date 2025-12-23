@@ -84,8 +84,8 @@ public class LinksRepository {
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
                 long id = resultSet.getLong(1);
-                String groupName = resultSet.getNString(2);
-                String linkName = resultSet.getNString(3);
+                String linkName = resultSet.getNString(2);
+                String groupName = resultSet.getNString(3);
                 LinkDTO linkDTO = LinkDTO.builder()
                                 .id(id)
                                 .groupName(groupName)
