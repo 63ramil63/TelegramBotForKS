@@ -9,6 +9,7 @@ import org.example.database.repository.GroupRepository;
 import org.example.database.repository.LinksRepository;
 import org.example.dto.FileDTO;
 import org.example.dto.FolderDTO;
+import org.example.dto.GroupDTO;
 import org.example.dto.LinkDTO;
 import org.example.files.FilesController;
 import org.example.site.WebSite;
@@ -239,9 +240,11 @@ public class MarkupSetter {
     private InlineKeyboardMarkup setLinksMainMarkup() {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        List<String> groups = groupRepository.getAllGroups();
-        for (String group : groups) {
-            InlineKeyboardButton button = ButtonSetter.setButton(group, group + "GroupForLinks");
+        List<GroupDTO> groups = groupRepository.getAllGroups();
+        for (GroupDTO group : groups) {
+            long id = group.getId();
+            String groupName = group.getGroupName();
+            InlineKeyboardButton button = ButtonSetter.setButton(groupName, id + "GroupForLinks");
             keyboard.add(ButtonSetter.setRow(button));
         }
         InlineKeyboardButton deleteLinksButton = ButtonSetter.setButton("Удалить ссылку", "DeleteLinksButton");
@@ -254,7 +257,10 @@ public class MarkupSetter {
     private InlineKeyboardMarkup setLinksFromGroup(String key) {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        String group = key.replace("GroupForLinks", "");
+        System.out.println(key);
+        long groupId = Long.parseLong(key.replace("GroupForLinks", ""));
+
+        String group = groupRepository.getGroupNameById(groupId);
         List<LinkDTO> links = linksRepository.getAllLinksByGroupName(group);
         if (!links.isEmpty()) {
             for (LinkDTO link : links) {
@@ -321,7 +327,8 @@ public class MarkupSetter {
         for (LinkDTO link : links) {
             long id = link.getId();
             String linkName = link.getLinkName();
-            InlineKeyboardButton button = ButtonSetter.setButton(linkName, id + "_LDel");
+            String groupName = link.getGroupName();
+            InlineKeyboardButton button = ButtonSetter.setButton(groupName + " " + linkName, id + "_LDel");
             keyboard.add(ButtonSetter.setRow(button));
         }
         keyboard.add(ButtonSetter.setRow(backButtonToLinks));
@@ -332,9 +339,11 @@ public class MarkupSetter {
     private InlineKeyboardMarkup setSelectGroupToDeleteLinksByAdminMarkup() {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        List<String> folders = groupRepository.getAllGroups();
-        for (String folder : folders) {
-            InlineKeyboardButton button = ButtonSetter.setButton(folder, folder + "_LinkFlrDel");
+        List<GroupDTO> groups = groupRepository.getAllGroups();
+        for (GroupDTO group : groups) {
+            long id = group.getId();
+            String groupName = group.getGroupName();
+            InlineKeyboardButton button = ButtonSetter.setButton(groupName, id + "_LinkFlrDel");
             keyboard.add(ButtonSetter.setRow(button));
         }
         keyboard.add(ButtonSetter.setRow(backButtonToLinks));
@@ -351,7 +360,8 @@ public class MarkupSetter {
         }
     }
 
-    private InlineKeyboardMarkup setLinksForDeleteFromGroup(String group) {
+    private InlineKeyboardMarkup setLinksForDeleteFromGroup(long groupId) {
+        String group = groupRepository.getGroupNameById(groupId);
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
         List<LinkDTO> links = linksRepository.getAllLinksByGroupName(group);
@@ -414,8 +424,8 @@ public class MarkupSetter {
         } else if (key.contains("GroupForLinks")) {
             return setLinksFromGroup(key);
         } else if (key.endsWith("_LinkFlrDel")) {
-            String group = key.replaceAll("_LinkFlrDel$", "");
-            return setLinksForDeleteFromGroup(group);
+            long groupId = Long.parseLong(key.replaceAll("_LinkFlrDel$", ""));
+            return setLinksForDeleteFromGroup(groupId);
         } else {
             return null;
         }
