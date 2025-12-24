@@ -366,6 +366,20 @@ public class TBot extends TelegramLongPollingBot {
                 }
                 return;
             }
+            case "/delete_Group" -> {
+                if (isAdmin(chatId)) {
+                    try {
+                        sendMessage = setSendMessageWithChangeableMarkup(chatId, "Выберите папку, которую хотите удалить", data);
+                        execute(sendMessage);
+                    } catch (TelegramApiException | IllegalArgumentException e) {
+                        System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e);
+                        checkMessageBeforeResponse(chatId, "SimpleError");
+                    }
+                } else {
+                    sendNewMessageResponse(chatId, "AdminError");
+                }
+                return;
+            }
         }
         if (data.contains("/sendToAll")) {
             if (!isAdmin(chatId)) {
@@ -410,7 +424,7 @@ public class TBot extends TelegramLongPollingBot {
     private void checkMessageBeforeResponse(long chatId, String data) {
         System.out.printf("checkMessageBeforeResponse(chatId : %d | data : %s) %tF %<tT%n", chatId, data, LocalDateTime.now());
         //Фикс для Unix систем
-        if (data.charAt(0) == '/') {
+        if (data.startsWith("/")) {
             sendNewMessageResponseOnCommand(chatId, data);
         } else {
             sendNewMessageResponse(chatId, data);
@@ -557,7 +571,7 @@ public class TBot extends TelegramLongPollingBot {
                     userRepository.updateCanAddGroup(chatId, (byte) 1);
                     message = setEditMessageWithoutMarkup(chatId, "Отправьте название группы", messageId);
                     try {
-                        message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK));
+                        message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK_TO_LINKS));
                         execute(message);
                     } catch (TelegramApiException | IllegalArgumentException e) {
                         System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
@@ -763,6 +777,19 @@ public class TBot extends TelegramLongPollingBot {
             } else {
                 sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
+        } else if(data.endsWith("_DGroup")) {
+            long id = Long.parseLong(data.replaceAll("_DGroup$", ""));
+            String groupName = groupRepository.getGroupNameById(id);
+            groupRepository.deleteGroupById(id);
+            linksRepository.deleteLinksByGroup(groupName);
+            try {
+                message = setEditMessageWithoutMarkup(chatId, "Группа с ссылками удалена", messageId);
+                message.setReplyMarkup(markupSetter.getChangeableMarkup("LinksButton"));
+                execute(message);
+            } catch (TelegramApiException | IllegalArgumentException e) {
+                System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
+                sendEditMessageResponse(chatId, "SimpleError", messageId);
+            }
         } else if (data.endsWith("_LinkFlrDel")) {
             message = setEditMessageWithoutMarkup(chatId, "Выберите ссылку, которую хотите удалить", messageId);
             try {
@@ -808,7 +835,7 @@ public class TBot extends TelegramLongPollingBot {
             message = setEditMessageWithoutMarkup(chatId, "Отправьте название ссылки и саму ссылку в виде\n" +
                     "название_ссылки:ссылка", messageId);
             try {
-                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK));
+                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK_TO_LINKS));
                 execute(message);
             } catch (TelegramApiException | IllegalArgumentException e) {
                 userRepository.updateCanAddLink(chatId, (byte) 0);

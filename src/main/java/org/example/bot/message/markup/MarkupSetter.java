@@ -72,6 +72,7 @@ public class MarkupSetter {
             case MarkupKey.ONLY_BACK -> savedBasicMarkup.put(key, getOnlyCancelButton());
             case MarkupKey.NONE -> savedBasicMarkup.put(key, getNoneMarkup());
             case MarkupKey.ONLY_BACK_TO_FILES -> savedBasicMarkup.put(key, getOnlyBackToFileButton());
+            case MarkupKey.ONLY_BACK_TO_LINKS -> savedBasicMarkup.put(key, getOnlyBackToLinksButton());
         }
     }
 
@@ -91,6 +92,14 @@ public class MarkupSetter {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
         keyboard.add(ButtonSetter.setRow(backButtonToFiles));
+        markup.setKeyboard(keyboard);
+        return markup;
+    }
+
+    private InlineKeyboardMarkup getOnlyBackToLinksButton() {
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+        keyboard.add(ButtonSetter.setRow(backButtonToLinks));
         markup.setKeyboard(keyboard);
         return markup;
     }
@@ -166,7 +175,7 @@ public class MarkupSetter {
     }
 
     // Получение файлов, которые сохранил пользователь и устанавливаем их как кнопки к сообщению
-    private InlineKeyboardMarkup setDeleteUserFilesMarkup(long chatId) {
+    private InlineKeyboardMarkup getDeleteUserFilesMarkup(long chatId) {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
         // Получение всех файлов, отправленных пользователем
@@ -185,7 +194,7 @@ public class MarkupSetter {
     }
 
     // Задание клавиатуры для выбора папки, из которой будут удаляться файлы
-    private InlineKeyboardMarkup setSelectFolderToDeleteFilesByAdmin() {
+    private InlineKeyboardMarkup getSelectFolderToDeleteFilesByAdmin() {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
         List<FolderDTO> folders = folderRepository.getFolders();
@@ -203,7 +212,7 @@ public class MarkupSetter {
     }
 
     // Задание клавиатуры для удаления файлов админом
-    private InlineKeyboardMarkup setDeleteFilesFromFolderByAdm(long id) {
+    private InlineKeyboardMarkup getDeleteFilesFromFolderByAdm(long id) {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
         String folderName = folderRepository.getFolderNameById(id);
@@ -222,22 +231,22 @@ public class MarkupSetter {
     }
 
     // Проверка является ли пользователь админом и последующие шаги
-    private InlineKeyboardMarkup setDeleteFilesMarkup(String key) {
+    private InlineKeyboardMarkup getDeleteFilesMarkup(String key) {
         if (key.contains("DeleteFileButton")) {
             long chatId = Long.parseLong(key.replaceAll("DeleteFileButton", ""));
             if (userIsAdmin(chatId)) {
-                return setSelectFolderToDeleteFilesByAdmin();
+                return getSelectFolderToDeleteFilesByAdmin();
             } else {
-                return setDeleteUserFilesMarkup(chatId);
+                return getDeleteUserFilesMarkup(chatId);
             }
         } else if (key.contains("FilesDelAdm")) {
             long folderId = Long.parseLong(key.replaceAll("FilesDelAdm", ""));
-            return setDeleteFilesFromFolderByAdm(folderId);
+            return getDeleteFilesFromFolderByAdm(folderId);
         }
         return getBasicMarkup(MarkupKey.MainMenu);
     }
 
-    private InlineKeyboardMarkup setLinksMainMarkup() {
+    private InlineKeyboardMarkup getLinksMainMarkup() {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
         List<GroupDTO> groups = groupRepository.getAllGroups();
@@ -254,7 +263,7 @@ public class MarkupSetter {
         return markup;
     }
 
-    private InlineKeyboardMarkup setLinksFromGroup(String key) {
+    private InlineKeyboardMarkup getLinksFromGroup(String key) {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
         System.out.println(key);
@@ -320,7 +329,7 @@ public class MarkupSetter {
         return markup;
     }
 
-    private InlineKeyboardMarkup setDeleteLinksMarkup(long chatId) {
+    private InlineKeyboardMarkup getDeleteLinksMarkup(long chatId) {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
         List<LinkDTO> links = linksRepository.getAllLinksByUsersChatId(chatId);
@@ -336,7 +345,7 @@ public class MarkupSetter {
         return markup;
     }
 
-    private InlineKeyboardMarkup setSelectGroupToDeleteLinksByAdminMarkup() {
+    private InlineKeyboardMarkup getSelectGroupToDeleteLinksByAdminMarkup() {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
         List<GroupDTO> groups = groupRepository.getAllGroups();
@@ -354,9 +363,9 @@ public class MarkupSetter {
     private InlineKeyboardMarkup checkAdminBeforeSetDeleteLinksMarkup(String key) {
         long chatId = Long.parseLong(key.replaceAll("DeleteLinksButton", ""));
         if (userIsAdmin(chatId)) {
-            return setSelectGroupToDeleteLinksByAdminMarkup();
+            return getSelectGroupToDeleteLinksByAdminMarkup();
         } else {
-            return setDeleteLinksMarkup(chatId);
+            return getDeleteLinksMarkup(chatId);
         }
     }
 
@@ -376,7 +385,7 @@ public class MarkupSetter {
         return markup;
     }
 
-    private InlineKeyboardMarkup setDeleteFolders() throws IllegalArgumentException {
+    private InlineKeyboardMarkup getDeleteFolders() throws IllegalArgumentException {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
         List<FolderDTO> folders = folderRepository.getFolders();
@@ -394,10 +403,26 @@ public class MarkupSetter {
         return markup;
     }
 
+    private InlineKeyboardMarkup getDeleteGroups() throws IllegalArgumentException {
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+        List<GroupDTO> folders = groupRepository.getAllGroups();
+
+        if (folders != null && !folders.isEmpty()) {
+            for (GroupDTO folder : folders) {
+                long groupId = folder.getId();
+                String groupName = folder.getGroupName();
+                InlineKeyboardButton button = ButtonSetter.setButton(groupName, groupId + "_DGroup");
+                keyboard.add(ButtonSetter.setRow(button));
+            }
+        }
+        keyboard.add(ButtonSetter.setRow(backButtonToFiles));
+        markup.setKeyboard(keyboard);
+        return markup;
+    }
+
     private InlineKeyboardMarkup folderCase(String key) throws IllegalArgumentException {
-        if (key.equals("/delete_Folder")) {
-            return setDeleteFolders();
-        } else if (key.contains("_Folder")) {
+        if (key.contains("_Folder")) {
             key = key.replace("_Folder", "");
             return getFilesFromFolderMarkup(key);
         }
@@ -409,30 +434,43 @@ public class MarkupSetter {
         if (key.equals("FileButton")) {
             return getFoldersFromDatabaseMarkup();
         } else if (key.contains("DeleteFileButton") || key.contains("FilesDelAdm")) {
-            return setDeleteFilesMarkup(key);
+            return getDeleteFilesMarkup(key);
         } else {
             throw new IllegalArgumentException("Illegal argument(key) in method fileCase() MarkupSetterClass() \n " +
                     "Argument is : " + key);
         }
     }
 
-    private InlineKeyboardMarkup linksCase(String key) {
+    private InlineKeyboardMarkup linksCase(String key) throws IllegalArgumentException {
         if (key.equals("LinksButton")) {
-            return setLinksMainMarkup();
+            return getLinksMainMarkup();
         } else if (key.contains("DeleteLinksButton")) {
             return checkAdminBeforeSetDeleteLinksMarkup(key);
         } else if (key.contains("GroupForLinks")) {
-            return setLinksFromGroup(key);
+            return getLinksFromGroup(key);
         } else if (key.endsWith("_LinkFlrDel")) {
             long groupId = Long.parseLong(key.replaceAll("_LinkFlrDel$", ""));
             return setLinksForDeleteFromGroup(groupId);
         } else {
-            return null;
+            throw new IllegalArgumentException("Illegal argument(key) in method linkCase() MarkupSetterClass() \n " +
+                    "Argument is : " + key);
         }
     }
 
+    private InlineKeyboardMarkup commandCase(String key) throws IllegalArgumentException{
+        if (key.equals("/delete_Folder")) {
+            return getDeleteFolders();
+        } else if (key.equals("/delete_Group")) {
+            return getDeleteGroups();
+        }
+        throw new IllegalArgumentException("Illegal argument(key) in method commandCase() MarkupSetterClass() \n " +
+                "Argument is : " + key);
+    }
+
     public InlineKeyboardMarkup getChangeableMarkup(String key) throws IllegalArgumentException {
-        if (key.contains("_Folder")) {
+        if (key.startsWith("/")) {
+            return commandCase(key);
+        } else if (key.contains("_Folder")) {
             return folderCase(key);
         } else if (key.contains("File") && !key.contains("Links")) {
             return fileCase(key);

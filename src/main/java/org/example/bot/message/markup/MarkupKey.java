@@ -5,5 +5,6 @@ public enum MarkupKey {
     MainMenu,
     ONLY_BACK,
     ONLY_BACK_TO_FILES,
+    ONLY_BACK_TO_LINKS,
     NONE
 }

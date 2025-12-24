@@ -21,6 +21,7 @@ public class LinksRepository {
     private static final String GET_LINK_INFO_BY_ID = "SELECT Link FROM " + tableName + " WHERE Id = ?";
     private static final String GET_USERS_CHAT_ID_BY_LINK_ID = "SELECT UsersChatId FROM " + tableName + " WHERE Id = ?";
     private static final String DELETE_LINK_BY_ID = "DELETE FROM " + tableName + " WHERE Id = ?";
+    private static final String DELETE_LINKS_BY_GROUP = "DELETE FROM " + tableName + " WHERE GroupName = ?";
 
     private static final String ADD_LINK_IN_HISTORY_TABLE = "INSERT INTO " + historyTable + " (LinkName, GroupName, Link, UsersChatId) values (?, ?, ?, ?)";
 
@@ -138,5 +139,15 @@ public class LinksRepository {
             System.err.printf("Error (LinksRepositoryClass (method deleteLinkById(id : %s))) %n%s%n", id, e);
         }
         return false;
+    }
+
+    public void deleteLinksByGroup(String group) {
+        try (Connection connection = database.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(DELETE_LINKS_BY_GROUP)) {
+            preparedStatement.setNString(1, group);
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            System.err.printf("Error (LinksRepositoryClass (method setDeleteLinksByGroup(group : %s))) %n%s%n", group, e);
+        }
     }
 }
