@@ -66,7 +66,8 @@ public class TBot extends TelegramLongPollingBot {
             /sendToAll text - Отправляет всем пользователям бота сообщение с указанным текстом
             /sendNotification text - Устанавливает текст при нажатии кнопки
             /addAdmin username - Добавляет нового админа с базовыми правами
-            /delete_Folder - дает клавиатуру с папки для удаления из бд и файловой системы
+            /delete_Folder - позволяет удалить папку с файлами
+            /delete_Group - позволяет удалить группу с ссылками
             """;
 
     private final StringBuilder notification = new StringBuilder("Нет каких либо оповещений");
