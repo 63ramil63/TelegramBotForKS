@@ -16,6 +16,7 @@ public class TableBuilder {
     private final String CREATE_LINKS_TABLE_SQL;
     private final String CREATE_GROUP_TABLE_SQL;
     private final String CREATE_LINKS_HISTORY_TABLE_SQL;
+    private final String CREATE_DELETION_LOG_TABLE;
 
     public TableBuilder() {
         dataBaseConnection = Database.getInstance();
@@ -83,6 +84,13 @@ public class TableBuilder {
                 UsersChatId BIGINT NOT NULL,
                 PRIMARY KEY (Id))
                 """;
+        CREATE_DELETION_LOG_TABLE = """
+                CREATE TABLE IF NOT EXISTS deletion_log (
+                Id BIGINT NOT NULL AUTO_INCREMENT,
+                UsersChatId BIGINT NOT NULL,
+                DescriptionOfAction NVARCHAR(255) NOT NULL,
+                PRIMARY KEY(Id))
+                """;
     }
 
     private void checkSQLUpdate(int rowsAffected, String tableName) {
@@ -113,5 +121,6 @@ public class TableBuilder {
         executeSQL(CREATE_LINKS_TABLE_SQL, "LINKS TABLE");
         executeSQL(CREATE_GROUP_TABLE_SQL, "GROUPS TABLE");
         executeSQL(CREATE_LINKS_HISTORY_TABLE_SQL, "LINKS HISTORY TABLE");
+        executeSQL(CREATE_DELETION_LOG_TABLE, "DELETION LOG TABLE");
     }
 }

@@ -11,7 +11,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class UserRepository {
-    private static final Database dataBaseConnection = Database.getInstance();
+    private final Database dataBaseConnection = Database.getInstance();
     private static final String tableName = "users";
 
     private static final String GET_USER = "SELECT UserName FROM " +  tableName + " WHERE ChatId=?";

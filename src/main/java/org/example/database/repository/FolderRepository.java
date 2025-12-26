@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class FolderRepository {
-    private static final Database databaseConnection = Database.getInstance();
+    private final Database databaseConnection = Database.getInstance();
     private static final String tableName = "folder_tracker";
 
     private static final String ADD_FOLDER = "INSERT INTO " + tableName + " (Folder) values (?)";

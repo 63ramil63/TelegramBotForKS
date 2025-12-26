@@ -47,6 +47,7 @@ public class TBot extends TelegramLongPollingBot {
     private FolderRepository folderRepository;
     private GroupRepository groupRepository;
     private LinksRepository linksRepository;
+    private DeletionLogRepository deletionLogRepository;
 
     private String bot_token;
     private String bot_name;
@@ -118,6 +119,7 @@ public class TBot extends TelegramLongPollingBot {
         userController.addAdminsFromProperty(adminsFromProperty);
         filesController.synchronizeFoldersWithDatabase();
         filesController.synchronizeFilesWithDatabase();
+        deletionLogRepository = new DeletionLogRepository();
     }
 
     @Override
@@ -768,6 +770,7 @@ public class TBot extends TelegramLongPollingBot {
                 try {
                     String folderName = folderRepository.getFolderNameById(id);
                     filesController.deleteFolderWithFiles(folderName);
+                    deletionLogRepository.addDeletionLog(chatId, "Deleted a folder -> " + folderName);
                     message = setEditMessageWithoutMarkup(chatId, "Папка успешно удалена", messageId);
                     message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
                     execute(message);
@@ -783,6 +786,7 @@ public class TBot extends TelegramLongPollingBot {
             String groupName = groupRepository.getGroupNameById(id);
             groupRepository.deleteGroupById(id);
             linksRepository.deleteLinksByGroup(groupName);
+            deletionLogRepository.addDeletionLog(chatId, "Deleted a group -> " + groupName);
             try {
                 message = setEditMessageWithoutMarkup(chatId, "Группа с ссылками удалена", messageId);
                 message.setReplyMarkup(markupSetter.getChangeableMarkup("LinksButton"));

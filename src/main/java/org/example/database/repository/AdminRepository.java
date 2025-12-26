@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AdminRepository {
-    private static final Database databaseConnection = Database.getInstance();
+    private final Database databaseConnection = Database.getInstance();
     private static final String tableName = "admins";
 
     private static final String GET_ADMINS = "SELECT Username FROM " + tableName;

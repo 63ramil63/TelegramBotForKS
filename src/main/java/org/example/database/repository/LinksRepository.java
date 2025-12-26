@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class LinksRepository {
-    private static final Database database = Database.getInstance();
+    private final Database database = Database.getInstance();
     private static final String tableName = "links";
     private static final String historyTable = "links_history";
 

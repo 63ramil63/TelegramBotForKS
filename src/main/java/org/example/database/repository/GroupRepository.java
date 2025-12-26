@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class GroupRepository {
-    private static final Database database = Database.getInstance();
+    private final Database database = Database.getInstance();
     private static final String tableName = "edu_groups";
 
     private static final String GET_ALL_GROUPS = "SELECT Id, GroupName FROM " + tableName;

@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class FileTrackerRepository {
-    private static final Database databaseConnection = Database.getInstance();
+    private final Database databaseConnection = Database.getInstance();
     private static final String tableName = "file_tracker";
     private static final String filesHistoryTable = "files_history";
 
