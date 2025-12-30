@@ -13,13 +13,14 @@ public class GroupRepository {
 
     private static final String GET_ALL_GROUPS = "SELECT Id, GroupName FROM " + tableName;
     private static final String GET_GROUP_NAME_BY_ID = "SELECT GroupName FROM " + tableName + " WHERE Id = ?";
-    private static final String ADD_NEW_GROUP = "INSERT INTO " + tableName + " (GroupName) values (?)";
+    private static final String ADD_NEW_GROUP = "INSERT INTO " + tableName + " (GroupName, ChatId) values (?, ?)";
     private static final String DELETE_GROUP_BY_ID = "DELETE FROM " + tableName + " WHERE Id = ?";
 
-    public void addNewGroup(String groupName) {
+    public void addNewGroup(long chatId, String groupName) {
         try (Connection connection = database.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(ADD_NEW_GROUP)) {
             preparedStatement.setString(1, groupName);
+            preparedStatement.setLong(2, chatId);
             int rowsAffected = preparedStatement.executeUpdate();
             if (rowsAffected > 0) {
                 System.out.println("Added new group: " + groupName);

@@ -14,17 +14,18 @@ public class FolderRepository {
     private final Database databaseConnection = Database.getInstance();
     private static final String tableName = "folder_tracker";
 
-    private static final String ADD_FOLDER = "INSERT INTO " + tableName + " (Folder) values (?)";
+    private static final String ADD_FOLDER = "INSERT INTO " + tableName + " (Folder, ChatId) values (?, ?)";
     private static final String GET_ALL_FOLDERS = "SELECT Id, Folder FROM " + tableName;
     private static final String GET_FOLDER_BY_ID = "SELECT Folder FROM " + tableName + " WHERE Id = ?";
     private static final String GET_FOLDER_BY_NAME = "SELECT Folder FROM " + tableName + " WHERE Folder = ?";
     private static final String DELETE_FOLDER_BY_NAME = "DELETE FROM " + tableName + " WHERE Folder = ?";
     private static final String DELETE_FOLDER_BY_ID = "DELETE FROM " + tableName + " WHERE Id = ?";
 
-    public boolean addFolder(String folderName) {
+    public boolean addFolder(long chatId, String folderName) {
         try (Connection connection = databaseConnection.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(ADD_FOLDER)) {
             preparedStatement.setString(1, folderName);
+            preparedStatement.setLong(2, chatId);
             int rowsAffected = preparedStatement.executeUpdate();
             if (rowsAffected > 0) {
                 return true;

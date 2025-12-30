@@ -12,18 +12,15 @@ import java.util.List;
 
 public class LinksRepository {
     private final Database database = Database.getInstance();
-    private static final String tableName = "links";
-    private static final String historyTable = "links_history";
+    private final String tableName = "links";
 
-    private static final String GET_ALL_LINKS_BY_GROUP_NAME = "SELECT Id, LinkName FROM " + tableName + " WHERE GroupName = ?";
-    private static final String GET_ALL_LINKS_BY_USERS_CHAT_ID = "SELECT Id, LinkName, GroupName FROM " + tableName + " WHERE UsersChatId = ?";
-    private static final String ADD_NEW_LINK = "INSERT INTO " + tableName + " (LinkName, GroupName, Link, UsersChatId) values (?, ?, ?, ?)";
-    private static final String GET_LINK_INFO_BY_ID = "SELECT Link FROM " + tableName + " WHERE Id = ?";
-    private static final String GET_USERS_CHAT_ID_BY_LINK_ID = "SELECT UsersChatId FROM " + tableName + " WHERE Id = ?";
-    private static final String DELETE_LINK_BY_ID = "DELETE FROM " + tableName + " WHERE Id = ?";
-    private static final String DELETE_LINKS_BY_GROUP = "DELETE FROM " + tableName + " WHERE GroupName = ?";
-
-    private static final String ADD_LINK_IN_HISTORY_TABLE = "INSERT INTO " + historyTable + " (LinkName, GroupName, Link, UsersChatId) values (?, ?, ?, ?)";
+    private final String GET_ALL_LINKS_BY_GROUP_NAME = "SELECT Id, LinkName FROM " + tableName + " WHERE GroupName = ?";
+    private final String GET_ALL_LINKS_BY_USERS_CHAT_ID = "SELECT Id, LinkName, GroupName FROM " + tableName + " WHERE UserChatId = ?";
+    private final String ADD_NEW_LINK = "INSERT INTO " + tableName + " (LinkName, GroupName, Link, UserChatId) values (?, ?, ?, ?)";
+    private final String GET_LINK_INFO_BY_ID = "SELECT Link FROM " + tableName + " WHERE Id = ?";
+    private final String GET_USERS_CHAT_ID_BY_LINK_ID = "SELECT UserChatId FROM " + tableName + " WHERE Id = ?";
+    private final String DELETE_LINK_BY_ID = "DELETE FROM " + tableName + " WHERE Id = ?";
+    private final String DELETE_LINKS_BY_GROUP = "DELETE FROM " + tableName + " WHERE GroupName = ?";
 
     private void prepareStatementForUsage(PreparedStatement preparedStatement, String linkName, String link, String groupName, long chatId) throws SQLException {
         preparedStatement.setString(1, linkName);
@@ -34,19 +31,11 @@ public class LinksRepository {
 
     public void addLink(String linkName, String link, String groupName,  long chatId) {
         try (Connection connection = database.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(ADD_NEW_LINK);
-             PreparedStatement preparedStatementForHistory = connection.prepareStatement(ADD_LINK_IN_HISTORY_TABLE)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(ADD_NEW_LINK)) {
             prepareStatementForUsage(preparedStatement, linkName, link, groupName, chatId);
             int rowsAffected = preparedStatement.executeUpdate();
             if (rowsAffected > 0) {
                 System.out.printf("New link added in links table, linkName: %s, user's chat id is: %d%n", linkName, chatId);
-            } else {
-                System.out.printf("Failed to add new link, linkName: %s, user's chat id is: %d%n", linkName, chatId);
-            }
-            prepareStatementForUsage(preparedStatementForHistory, linkName, link, groupName, chatId);
-            rowsAffected = preparedStatementForHistory.executeUpdate();
-            if (rowsAffected > 0) {
-                System.out.printf("New link added in history table, linkName: %s, user's chat id is: %d%n", linkName, chatId);
             } else {
                 System.out.printf("Failed to add new link, linkName: %s, user's chat id is: %d%n", linkName, chatId);
             }
@@ -141,7 +130,7 @@ public class LinksRepository {
         return false;
     }
 
-    public void deleteLinksByGroup(String group) {
+    public void deleteAllLinksByGroup(String group) {
         try (Connection connection = database.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(DELETE_LINKS_BY_GROUP)) {
             preparedStatement.setNString(1, group);

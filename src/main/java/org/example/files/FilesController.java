@@ -1,6 +1,7 @@
 package org.example.files;
 
 import org.example.bot.TBot;
+import org.example.controller.FilesAndFoldersController;
 import org.example.database.repository.FileTrackerRepository;
 import org.example.database.repository.FolderRepository;
 import org.example.dto.FileDTO;
@@ -25,17 +26,15 @@ import java.util.stream.Stream;
 
 public class FilesController {
     private final TBot tBot;
-    private final FolderRepository folderRepository;
-    private final FileTrackerRepository fileTrackerRepository;
+    private final FilesAndFoldersController filesAndFoldersController;
     private final String bot_token;
     private final String delimiter;
     private final String path;
     private final long maxFileSize;
 
-    public FilesController(TBot tBot, FolderRepository folderRepository, FileTrackerRepository fileTrackerRepository, String bot_token, String delimiter, String path, long maxFileSize) {
+    public FilesController(TBot tBot, FilesAndFoldersController filesAndFoldersController, String bot_token, String delimiter, String path, long maxFileSize) {
         this.tBot = tBot;
-        this.folderRepository = folderRepository;
-        this.fileTrackerRepository = fileTrackerRepository;
+        this.filesAndFoldersController = filesAndFoldersController;
         this.bot_token = bot_token;
         this.delimiter = delimiter;
         this.path = path;
@@ -56,9 +55,7 @@ public class FilesController {
             List<String> folders = getFoldersFromPath();
             if (!folders.isEmpty()) {
                 for (String folder : folders) {
-                    if (!folderRepository.checkFolderByName(folder)) {
-                        folderRepository.addFolder(folder);
-                    }
+                    filesAndFoldersController.checkAndAddFolderIfNotExistsByName(folder);
                 }
             }
         } catch (IOException e) {
@@ -79,12 +76,12 @@ public class FilesController {
 
     public List<FileDTO> getFilesFromDatabaseByFolder(String folder) {
         List<FileDTO> files;
-        files = fileTrackerRepository.getFilesByFolderName(folder);
+        files = filesAndFoldersController.getFilesByFolderName(folder);
         return files;
     }
 
     private void addFileToDatabase(String folder, String fileName) {
-        fileTrackerRepository.putFileInfo(0, folder, fileName);
+        filesAndFoldersController.putFileInfo(0, folder, fileName);
     }
 
     public void synchronizeFilesWithDatabase() {
@@ -92,7 +89,7 @@ public class FilesController {
             List<String> folders = getFoldersFromPath();
             for (String folder : folders) {
                 List<String> filesInFolder = getFilesFromFolder(folder);
-                List<FileDTO> filesInDatabase = fileTrackerRepository.getFilesByFolderName(folder);
+                List<FileDTO> filesInDatabase = filesAndFoldersController.getFilesByFolderName(folder);
 
                 Set<String> databaseFileNames = filesInDatabase.stream()
                         .map(FileDTO::getFileName)
@@ -109,11 +106,11 @@ public class FilesController {
         }
     }
 
-    public void addFolder(String text) {
+    public void addFolder(long chatId, String text) {
         try {
             if (Files.isDirectory(Path.of(this.path))) {
                 Files.createDirectory(Path.of(this.path + text));
-                folderRepository.addFolder(text);
+                filesAndFoldersController.addFolder(chatId, text);
             }
         } catch (IOException e) {
             System.err.printf("Error (FilesControllerClass (method addFolder(data : %s))) %s%n", text, e);
@@ -176,14 +173,14 @@ public class FilesController {
     }
 
     public void deleteFolderWithFiles(String folder) throws IOException {
-        List<FileDTO> filesInDB = fileTrackerRepository.getFilesByFolderName(folder);
+        List<FileDTO> filesInDB = filesAndFoldersController.getFilesByFolderName(folder);
         if (!filesInDB.isEmpty()) {
             for (FileDTO fileInDB : filesInDB) {
-                fileTrackerRepository.deleteUserFileFromRepository(fileInDB.getId());
+                filesAndFoldersController.deleteUserFileFromRepository(fileInDB.getId());
                 deleteFile(fileInDB.getFolder() + delimiter + fileInDB.getFileName());
             }
         }
         deleteFile(folder);
-        folderRepository.deleteFolderByName(folder);
+        filesAndFoldersController.deleteFolderByName(folder);
     }
 }

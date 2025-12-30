@@ -17,32 +17,38 @@ public class TableBuilder {
     private final String CREATE_GROUP_TABLE_SQL;
     private final String CREATE_LINKS_HISTORY_TABLE_SQL;
     private final String CREATE_DELETION_LOG_TABLE;
+    private final String CREATE_USER_BANS_TABLE;
+    private final String CREATE_USER_BANS_HISTORY_TABLE;
 
     public TableBuilder() {
         dataBaseConnection = Database.getInstance();
         CREATE_USERS_TABLE_SQL = """
                 CREATE TABLE IF NOT EXISTS users (
+                Id BIGINT NOT NULL AUTO_INCREMENT,
                 ChatId BIGINT NOT NULL,
                 UserName NVARCHAR(64) NULL,
+                FirstName NVARCHAR(255) NULL,
+                LastName NVARCHAR(255) NULL,
                 Folder NVARCHAR(15) NULL,
                 CanAddFolder TINYINT DEFAULT 0,
                 CanAddGroup TINYINT DEFAULT 0,
                 CanAddLink TINYINT DEFAULT 0,
-                GroupId VARCHAR(4) NULL,
-                GroupForLinks NVARCHAR(10) NULL,
-                PRIMARY KEY (ChatId))
+                GroupId NVARCHAR(4) NULL,
+                GroupForLinks NVARCHAR(20) NULL,
+                PRIMARY KEY (Id))
                 """;
         CREATE_FOLDER_TRACKING_TABLE_SQL = """
                 CREATE TABLE IF NOT EXISTS folder_tracker(
                 Id BIGINT NOT NULL AUTO_INCREMENT,
-                Folder NVARCHAR(15) NOT NULL UNIQUE,
+                Folder NVARCHAR(20) NOT NULL UNIQUE,
+                ChatId BIGINT NOT NULL,
                 PRIMARY KEY(Id))
                 """;
         CREATE_FILE_TRACKING_TABLE_SQL = """
                 CREATE TABLE IF NOT EXISTS file_tracker (
                 Id BIGINT NOT NULL AUTO_INCREMENT,
                 ChatId BIGINT NOT NULL,
-                Folder NVARCHAR(15) NOT NULL,
+                Folder NVARCHAR(20) NOT NULL,
                 FileName NVARCHAR(100) NOT NULL,
                 PRIMARY KEY (Id))
                 """;
@@ -65,15 +71,15 @@ public class TableBuilder {
                 LinkName NVARCHAR(50) NOT NULL,
                 GroupName NVARCHAR(20) NOT NULL,
                 Link NVARCHAR(255) NOT NULL,
-                UsersChatId BIGINT NOT NULL,
+                UserChatId BIGINT NOT NULL,
                 PRIMARY KEY(Id))
                 """;
         CREATE_GROUP_TABLE_SQL = """
                 CREATE TABLE IF NOT EXISTS edu_groups(
                 Id BIGINT NOT NULL AUTO_INCREMENT,
-                GroupName NVARCHAR(10) NOT NULL UNIQUE,
-                PRIMARY KEY(Id)
-                )
+                GroupName NVARCHAR(20) NOT NULL UNIQUE,
+                ChatId BIGINT NOT NULL,
+                PRIMARY KEY(Id))
                 """;
         CREATE_LINKS_HISTORY_TABLE_SQL = """
                 CREATE TABLE IF NOT EXISTS links_history(
@@ -81,14 +87,33 @@ public class TableBuilder {
                 LinkName NVARCHAR(50) NOT NULL,
                 GroupName NVARCHAR(20) NOT NULL,
                 Link NVARCHAR(255) NOT NULL,
-                UsersChatId BIGINT NOT NULL,
+                UserChatId BIGINT NOT NULL,
                 PRIMARY KEY (Id))
                 """;
         CREATE_DELETION_LOG_TABLE = """
                 CREATE TABLE IF NOT EXISTS deletion_log (
                 Id BIGINT NOT NULL AUTO_INCREMENT,
-                UsersChatId BIGINT NOT NULL,
+                UserChatId BIGINT NOT NULL,
                 DescriptionOfAction NVARCHAR(255) NOT NULL,
+                PRIMARY KEY(Id))
+                """;
+        CREATE_USER_BANS_TABLE = """
+                CREATE TABLE IF NOT EXISTS user_bans (
+                Id BIGINT NOT NULL AUTO_INCREMENT,
+                UserChatId BIGINT NOT NULL,
+                Reason NVARCHAR(255) NOT NULL,
+                BanType NVARCHAR(20) NOT NULL,
+                AdminChatId BIGINT NOT NULL,
+                PRIMARY KEY(Id))
+                """;
+        CREATE_USER_BANS_HISTORY_TABLE = """
+                CREATE TABLE IF NOT EXISTS user_bans_history (
+                Id BIGINT NOT NULL AUTO_INCREMENT,
+                UserChatId BIGINT NOT NULL,
+                Reason NVARCHAR(255) NULL,
+                BanType NVARCHAR(20) NULL,
+                AdminChatId BIGINT NULL,
+                Action NVARCHAR(10) NOT NULL,
                 PRIMARY KEY(Id))
                 """;
     }
@@ -122,5 +147,7 @@ public class TableBuilder {
         executeSQL(CREATE_GROUP_TABLE_SQL, "GROUPS TABLE");
         executeSQL(CREATE_LINKS_HISTORY_TABLE_SQL, "LINKS HISTORY TABLE");
         executeSQL(CREATE_DELETION_LOG_TABLE, "DELETION LOG TABLE");
+        executeSQL(CREATE_USER_BANS_TABLE, "USER BANS TABLE");
+        executeSQL(CREATE_USER_BANS_HISTORY_TABLE, "USER BANS HISTORY TABLE");
     }
 }

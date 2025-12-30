@@ -8,9 +8,9 @@ import java.sql.SQLException;
 
 public class DeletionLogRepository {
     private final Database database = Database.getInstance();
-    private static final String table_name = "deletion_log";
+    private final String table_name = "deletion_log";
 
-    private static final String ADD_NEW_LOG = "INSERT INTO " + table_name + " (UsersChatId, DescriptionOfAction) VALUES (?, ?)";
+    private final String ADD_NEW_LOG = "INSERT INTO " + table_name + " (UserChatId, DescriptionOfAction) VALUES (?, ?)";
 
     public void addDeletionLog(long chatId, String descriptionOfAction) {
         try (Connection connection = database.getConnection();

@@ -14,22 +14,27 @@ public class UserRepository {
     private final Database dataBaseConnection = Database.getInstance();
     private static final String tableName = "users";
 
-    private static final String GET_USER = "SELECT UserName FROM " +  tableName + " WHERE ChatId=?";
-    private static final String GET_FILE_PATH = "SELECT Folder FROM " + tableName + " WHERE ChatId=?";
-    private static final String GET_GROUP_ID = "SELECT GroupId FROM " + tableName + " WHERE ChatId=?";
-    private static final String GET_CAN_ADD_FOLDER = "SELECT CanAddFolder FROM " + tableName + " WHERE ChatId=?";
-    private static final String GET_CAN_ADD_GROUP = "SELECT CanAddGroup FROM " + tableName + " WHERE ChatId=?";
-    private static final String GET_CAN_ADD_LINK = "SELECT CanAddLink FROM " + tableName + " WHERE ChatId=?";
-    private static final String GET_GROUP_FOR_LINKS = "SELECT GroupForLinks FROM " + tableName + " WHERE ChatId=?";
-    private static final String ADD_USER = "INSERT INTO " + tableName + " (ChatId) values (?)";
-    private static final String UPDATE_GROUP_ID = "UPDATE " + tableName + " SET GroupId=? WHERE ChatId=?";
-    private static final String UPDATE_FILE_PATH = "UPDATE " + tableName + " SET Folder=? WHERE ChatId=?";
-    private static final String UPDATE_CAN_ADD_FOLDER = "UPDATE " + tableName + " SET CanAddFolder=? WHERE ChatId=?";
-    private static final String UPDATE_CAN_ADD_GROUP = "UPDATE " + tableName + " SET CanAddGroup=? WHERE ChatId=?";
-    private static final String UPDATE_CAN_ADD_LINK = "UPDATE " + tableName + " SET CanAddLink=? WHERE ChatId=?";
-    private static final String UPDATE_USER_NAME = "UPDATE " + tableName + " SET UserName=? WHERE ChatId=?";
-    private static final String UPDATE_GROUP_FOR_LINKS = "UPDATE " + tableName + " SET GroupForLinks=? WHERE ChatId=?";
-    private static final String GET_ALL_CHAT_ID = "SELECT ChatId FROM " + tableName;
+    private final String GET_USER = "SELECT UserName FROM " +  tableName + " WHERE ChatId=?";
+    private final String GET_USER_FIRST_NAME = "SELECT FirstName FROM " +  tableName + " WHERE ChatId = ?";
+    private final String GET_USER_LAST_NAME = "SELECT LastName FROM " +  tableName + " WHERE ChatId = ?";
+    private final String GET_FILE_PATH = "SELECT Folder FROM " + tableName + " WHERE ChatId = ?";
+    private final String GET_GROUP_ID = "SELECT GroupId FROM " + tableName + " WHERE ChatId = ?";
+    private final String GET_CAN_ADD_FOLDER = "SELECT CanAddFolder FROM " + tableName + " WHERE ChatId = ?";
+    private final String GET_CAN_ADD_GROUP = "SELECT CanAddGroup FROM " + tableName + " WHERE ChatId = ?";
+    private final String GET_CAN_ADD_LINK = "SELECT CanAddLink FROM " + tableName + " WHERE ChatId = ?";
+    private final String GET_GROUP_FOR_LINKS = "SELECT GroupForLinks FROM " + tableName + " WHERE ChatId = ?";
+    private final String ADD_USER = "INSERT INTO " + tableName + " (ChatId) values (?)";
+    private final String UPDATE_GROUP_ID = "UPDATE " + tableName + " SET GroupId = ? WHERE ChatId = ?";
+    private final String UPDATE_FILE_PATH = "UPDATE " + tableName + " SET Folder = ? WHERE ChatId = ?";
+    private final String UPDATE_CAN_ADD_FOLDER = "UPDATE " + tableName + " SET CanAddFolder = ? WHERE ChatId = ?";
+    private final String UPDATE_CAN_ADD_GROUP = "UPDATE " + tableName + " SET CanAddGroup = ? WHERE ChatId = ?";
+    private final String UPDATE_CAN_ADD_LINK = "UPDATE " + tableName + " SET CanAddLink = ? WHERE ChatId = ?";
+    private final String UPDATE_USER_NAME = "UPDATE " + tableName + " SET UserName = ? WHERE ChatId = ?";
+    private final String UPDATE_GROUP_FOR_LINKS = "UPDATE " + tableName + " SET GroupForLinks = ? WHERE ChatId = ?";
+    private final String GET_ALL_CHAT_ID = "SELECT ChatId FROM " + tableName;
+    private final String UPDATE_FIRST_NAME = "UPDATE " + tableName + " SET FirstName = ? WHERE ChatId = ?";
+    private final String UPDATE_LAST_NAME = "UPDATE " + tableName + " SET LastName = ? WHERE ChatId = ?";
+
 
     // Метод для выполнения запросов с 1 переменной в запросе
     private String executeSQLQuery(String sql, long chatId) {
@@ -69,17 +74,15 @@ public class UserRepository {
     }
 
     public String getUserName(long chatId) {
-        try (Connection connection = dataBaseConnection.getConnection();
-            PreparedStatement preparedStatement = connection.prepareStatement(GET_USER)) {
-            preparedStatement.setLong(1, chatId);
-            ResultSet resultSet = preparedStatement.executeQuery();
-            if (resultSet.next()) {
-                return resultSet.getNString("UserName");
-            }
-        } catch (SQLException e) {
-            System.err.printf("Error (UserRepositoryClass (method getUserName(chatId : %d))) %n%s%n", chatId, e);
-        }
-        return "";
+        return executeSQLQuery(GET_USER, chatId);
+    }
+
+    public String getFirstName(long chatId) {
+        return executeSQLQuery(GET_USER_FIRST_NAME, chatId);
+    }
+
+    public String getLastName(long chatId) {
+        return executeSQLQuery(GET_USER_LAST_NAME, chatId);
     }
 
     public String getFilePath(long chatId) {
@@ -178,13 +181,27 @@ public class UserRepository {
         executeSQLUpdate(UPDATE_CAN_ADD_FOLDER, bool, chatId);
     }
 
-    public void updateCanAddGroup(long chatId, byte bool) { executeSQLUpdate(UPDATE_CAN_ADD_GROUP, bool, chatId); }
+    public void updateCanAddGroup(long chatId, byte bool) {
+        executeSQLUpdate(UPDATE_CAN_ADD_GROUP, bool, chatId);
+    }
 
-    public void updateCanAddLink(long chatId, byte bool) { executeSQLUpdate(UPDATE_CAN_ADD_LINK, bool, chatId); }
+    public void updateCanAddLink(long chatId, byte bool) {
+        executeSQLUpdate(UPDATE_CAN_ADD_LINK, bool, chatId);
+    }
 
     public void updateUserName(long chatId, String userName) {
         executeSQLUpdate(UPDATE_USER_NAME, userName, chatId);
     }
 
-    public void updateGroupForLinks(long chatId, String groupForLinks) { executeSQLUpdate(UPDATE_GROUP_FOR_LINKS, groupForLinks, chatId); }
+    public void updateGroupForLinks(long chatId, String groupForLinks) {
+        executeSQLUpdate(UPDATE_GROUP_FOR_LINKS, groupForLinks, chatId);
+    }
+
+    public void updateFirstName(long chatId, String firstName) {
+        executeSQLUpdate(UPDATE_FIRST_NAME, firstName, chatId);
+    }
+
+    public void updateLastName(long chatId, String lastName) {
+        executeSQLUpdate(UPDATE_LAST_NAME, lastName, chatId);
+    }
 }

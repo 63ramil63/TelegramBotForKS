@@ -14,35 +14,15 @@ import java.util.List;
 public class FileTrackerRepository {
     private final Database databaseConnection = Database.getInstance();
     private static final String tableName = "file_tracker";
-    private static final String filesHistoryTable = "files_history";
 
     private static final String PUT_FILE_INFO = "INSERT INTO " + tableName + " (ChatId, Folder, FileName) values (?, ?, ?)";
     private static final String GET_ALL_USER_FILES = "SELECT Id, Folder, FileName FROM " + tableName + " WHERE ChatId = ?";
-    private static final String PUT_FILE_INFO_TO_FILES_HISTORY = "INSERT INTO " + filesHistoryTable + " (ChatId, FilePath) values (? ,?)";
     private static final String GET_ALL_FILES_BY_FOLDER_NAME = "SELECT Id, FileName FROM " + tableName + " WHERE Folder = ?";
 
 
     private static final String GET_FILE_CHAT_ID_BY_ID = "SELECT ChatId FROM " + tableName + " WHERE Id = ?";
     private static final String DELETE_USER_FILE_BY_ID = "DELETE FROM " + tableName + " WHERE Id = ?";
     private static final String GET_FILE_INFO_BY_FILE_ID = "SELECT Folder, FileName FROM " + tableName + " WHERE Id = ?";
-
-    public void putFileInfoToFilesHistory(long chatId, String folder, String fileName) {
-        try (Connection connection = databaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(PUT_FILE_INFO_TO_FILES_HISTORY)) {
-            // Для таблицы истории файлов
-            preparedStatement.setLong(1, chatId);
-            preparedStatement.setString(2, folder + "/" + fileName);
-            int rowsAffected = preparedStatement.executeUpdate();
-            if (rowsAffected > 0) {
-                System.out.println("Add file info in history for file " + folder + "/" + fileName);
-            } else {
-                System.err.println("Error add file info in history  " + folder + "/" + fileName);
-            }
-        } catch (SQLException e) {
-            System.err.printf("Error (FileTrackerRepositoryClass (method putFileInfoToFilesHistory(chatId : %d, folder : %s, fileName : %s)))%n",
-                    chatId, folder, fileName);
-        }
-    }
 
     public void putFileInfo(long chatId, String folder, String fileName) {
         try (Connection connection = databaseConnection.getConnection();
@@ -57,7 +37,6 @@ public class FileTrackerRepository {
             } else {
                 System.err.println("Error add file info " + folder + " / " + fileName);
             }
-            putFileInfoToFilesHistory(chatId, folder, fileName);
         } catch (SQLException e) {
             System.err.printf("Error (FileTrackerRepositoryClass (method putFileInfo(chatId : %d, folder : %s, fileName : %s)))%n",
                     chatId, folder, fileName);

@@ -2,11 +2,9 @@ package org.example.bot.message.markup;
 
 import org.example.bot.TBot;
 import org.example.bot.message.markup.button.ButtonSetter;
+import org.example.controller.FilesAndFoldersController;
+import org.example.controller.LinksAndGroupsController;
 import org.example.controller.UserController;
-import org.example.database.repository.FileTrackerRepository;
-import org.example.database.repository.FolderRepository;
-import org.example.database.repository.GroupRepository;
-import org.example.database.repository.LinksRepository;
 import org.example.dto.FileDTO;
 import org.example.dto.FolderDTO;
 import org.example.dto.GroupDTO;
@@ -23,12 +21,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MarkupSetter {
 
     private final FilesController filesController;
-    private final FileTrackerRepository fileTrackerRepository;
-    private final FolderRepository folderRepository;
+    private final FilesAndFoldersController filesAndFoldersController;
     private final UserController userController;
-
-    private final LinksRepository linksRepository;
-    private final GroupRepository groupRepository;
+    private final LinksAndGroupsController linksAndGroupsController;
 
     private static InlineKeyboardButton backButtonToMainMenu;
     private static InlineKeyboardButton addNewGroupButton;
@@ -36,14 +31,12 @@ public class MarkupSetter {
     private static InlineKeyboardButton backButtonToLinks;
     private static InlineKeyboardButton backButtonToLessons;
 
-    public MarkupSetter(FilesController filesController, FileTrackerRepository fileTrackerRepository,
-                        FolderRepository folderRepository, UserController userController, LinksRepository linksRepository, GroupRepository groupRepository) {
+    public MarkupSetter(FilesController filesController, FilesAndFoldersController filesAndFoldersController,
+                        UserController userController, LinksAndGroupsController linksAndGroupsController) {
         this.filesController = filesController;
-        this.fileTrackerRepository = fileTrackerRepository;
-        this.folderRepository = folderRepository;
+        this.filesAndFoldersController = filesAndFoldersController;
         this.userController = userController;
-        this.linksRepository = linksRepository;
-        this.groupRepository = groupRepository;
+        this.linksAndGroupsController = linksAndGroupsController;
         backButtonToMainMenu = ButtonSetter.setButton("Назад", "BackButton");
         backButtonToFiles = ButtonSetter.setButton("Назад", "FileButton");
         backButtonToLinks = ButtonSetter.setButton("Назад", "LinksButton");
@@ -67,8 +60,8 @@ public class MarkupSetter {
 
     private void setMarkup(MarkupKey key) {
         switch (key) {
-            case MarkupKey.MainMenu -> savedBasicMarkup.put(key, getMainMenuButtons());
-            case MarkupKey.LessonMenu -> savedBasicMarkup.put(key, getLessonMenuButtons());
+            case MarkupKey.MAIN_MENU -> savedBasicMarkup.put(key, getMainMenuButtons());
+            case MarkupKey.LESSON_MENU -> savedBasicMarkup.put(key, getLessonMenuButtons());
             case MarkupKey.ONLY_BACK -> savedBasicMarkup.put(key, getOnlyCancelButton());
             case MarkupKey.NONE -> savedBasicMarkup.put(key, getNoneMarkup());
             case MarkupKey.ONLY_BACK_TO_FILES -> savedBasicMarkup.put(key, getOnlyBackToFileButton());
@@ -105,7 +98,7 @@ public class MarkupSetter {
     }
 
     private boolean userIsAdmin(long chatId) {
-        return userController.checkAdmin(userController.getUsername(chatId));
+        return userController.checkAdminByChatId(chatId);
     }
 
     private InlineKeyboardMarkup getLessonMenuButtons() {
@@ -179,7 +172,7 @@ public class MarkupSetter {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
         // Получение всех файлов, отправленных пользователем
-        List<FileDTO> filesDTOs = fileTrackerRepository.getAllUserFiles(chatId);
+        List<FileDTO> filesDTOs = filesAndFoldersController.getAllUserFiles(chatId);
         if (filesDTOs != null && !filesDTOs.isEmpty()) {
             for (FileDTO fileDTO : filesDTOs) {
                 String filePath = fileDTO.getFolder() + TBot.delimiter + fileDTO.getFileName();
@@ -197,7 +190,7 @@ public class MarkupSetter {
     private InlineKeyboardMarkup getSelectFolderToDeleteFilesByAdmin() {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        List<FolderDTO> folders = folderRepository.getFolders();
+        List<FolderDTO> folders = filesAndFoldersController.getFolders();
         if (folders != null && !folders.isEmpty()) {
             for (FolderDTO folder : folders) {
                 long id = folder.getId();
@@ -215,8 +208,8 @@ public class MarkupSetter {
     private InlineKeyboardMarkup getDeleteFilesFromFolderByAdm(long id) {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        String folderName = folderRepository.getFolderNameById(id);
-        List<FileDTO> files = fileTrackerRepository.getFilesByFolderName(folderName);
+        String folderName = filesAndFoldersController.getFolderNameById(id);
+        List<FileDTO> files = filesAndFoldersController.getFilesByFolderName(folderName);
         if (files != null && !files.isEmpty()) {
             for (FileDTO file : files) {
                 long fileId = file.getId();
@@ -243,13 +236,13 @@ public class MarkupSetter {
             long folderId = Long.parseLong(key.replaceAll("FilesDelAdm", ""));
             return getDeleteFilesFromFolderByAdm(folderId);
         }
-        return getBasicMarkup(MarkupKey.MainMenu);
+        return getBasicMarkup(MarkupKey.MAIN_MENU);
     }
 
     private InlineKeyboardMarkup getLinksMainMarkup() {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        List<GroupDTO> groups = groupRepository.getAllGroups();
+        List<GroupDTO> groups = linksAndGroupsController.getAllGroups();
         for (GroupDTO group : groups) {
             long id = group.getId();
             String groupName = group.getGroupName();
@@ -266,11 +259,10 @@ public class MarkupSetter {
     private InlineKeyboardMarkup getLinksFromGroup(String key) {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        System.out.println(key);
         long groupId = Long.parseLong(key.replace("GroupForLinks", ""));
 
-        String group = groupRepository.getGroupNameById(groupId);
-        List<LinkDTO> links = linksRepository.getAllLinksByGroupName(group);
+        String group = linksAndGroupsController.getGroupNameById(groupId);
+        List<LinkDTO> links = linksAndGroupsController.getAllLinksByGroupName(group);
         if (!links.isEmpty()) {
             for (LinkDTO link : links) {
                 long id = link.getId();
@@ -297,7 +289,7 @@ public class MarkupSetter {
                 keyboard.add(ButtonSetter.setRow(button));
             }
         }
-        InlineKeyboardButton addFileButtons = ButtonSetter.setButton("Сделать основной: " + folder, folder + "AddFileButton");
+        InlineKeyboardButton addFileButtons = ButtonSetter.setButton("Сделать основной", folder + "AddFileButton");
         keyboard.add(ButtonSetter.setRow(backButtonToFiles, addFileButtons));
         markup.setKeyboard(keyboard);
         return markup;
@@ -312,7 +304,7 @@ public class MarkupSetter {
     private InlineKeyboardMarkup getFoldersFromDatabaseMarkup() {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        List<FolderDTO> folders = folderRepository.getFolders();
+        List<FolderDTO> folders = filesAndFoldersController.getFolders();
         if (folders != null && !folders.isEmpty()) {
             for (FolderDTO folder : folders) {
                 String folderName = folder.getFolder();
@@ -332,7 +324,7 @@ public class MarkupSetter {
     private InlineKeyboardMarkup getDeleteLinksMarkup(long chatId) {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        List<LinkDTO> links = linksRepository.getAllLinksByUsersChatId(chatId);
+        List<LinkDTO> links = linksAndGroupsController.getAllLinksByUsersChatId(chatId);
         for (LinkDTO link : links) {
             long id = link.getId();
             String linkName = link.getLinkName();
@@ -348,7 +340,7 @@ public class MarkupSetter {
     private InlineKeyboardMarkup getSelectGroupToDeleteLinksByAdminMarkup() {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        List<GroupDTO> groups = groupRepository.getAllGroups();
+        List<GroupDTO> groups = linksAndGroupsController.getAllGroups();
         for (GroupDTO group : groups) {
             long id = group.getId();
             String groupName = group.getGroupName();
@@ -370,10 +362,10 @@ public class MarkupSetter {
     }
 
     private InlineKeyboardMarkup setLinksForDeleteFromGroup(long groupId) {
-        String group = groupRepository.getGroupNameById(groupId);
+        String group = linksAndGroupsController.getGroupNameById(groupId);
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        List<LinkDTO> links = linksRepository.getAllLinksByGroupName(group);
+        List<LinkDTO> links = linksAndGroupsController.getAllLinksByGroupName(group);
         for (LinkDTO link : links) {
             long id = link.getId();
             String linkName = link.getLinkName();
@@ -388,7 +380,7 @@ public class MarkupSetter {
     private InlineKeyboardMarkup getDeleteFolders() throws IllegalArgumentException {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        List<FolderDTO> folders = folderRepository.getFolders();
+        List<FolderDTO> folders = filesAndFoldersController.getFolders();
 
         if (folders != null && !folders.isEmpty()) {
             for (FolderDTO folder : folders) {
@@ -406,7 +398,7 @@ public class MarkupSetter {
     private InlineKeyboardMarkup getDeleteGroups() throws IllegalArgumentException {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        List<GroupDTO> folders = groupRepository.getAllGroups();
+        List<GroupDTO> folders = linksAndGroupsController.getAllGroups();
 
         if (folders != null && !folders.isEmpty()) {
             for (GroupDTO folder : folders) {

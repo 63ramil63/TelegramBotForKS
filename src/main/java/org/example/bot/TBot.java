@@ -1,12 +1,17 @@
 package org.example.bot;
 
 import org.example.Main;
+import org.example.bot.ban.types.BanType;
+import org.example.bot.ban.types.ban.info.BanInfo;
 import org.example.bot.message.DeleteMessageBuilder;
 import org.example.bot.message.EditMessageBuilder;
 import org.example.bot.message.MessageBuilder;
 import org.example.bot.message.MessageWithDocBuilder;
 import org.example.bot.message.markup.MarkupKey;
 import org.example.bot.message.markup.MarkupSetter;
+import org.example.controller.FilesAndFoldersController;
+import org.example.controller.LinksAndGroupsController;
+import org.example.controller.UserBansController;
 import org.example.controller.UserController;
 import org.example.database.repository.*;
 import org.example.dto.FileDTO;
@@ -37,17 +42,14 @@ import java.util.concurrent.*;
 public class TBot extends TelegramLongPollingBot {
 
     private final ExecutorService executorService = new ThreadPoolExecutor(4, 10, 60L, TimeUnit.SECONDS, new LinkedBlockingDeque<>(100));
-    private UserRepository userRepository;
-    private FileTrackerRepository fileTrackerRepository;
+    private FilesAndFoldersController filesAndFoldersController;
     private MarkupSetter markupSetter;
     private FilesController filesController;
     private ScheduleCache scheduleCache;
-    private AdminRepository adminRepository;
     private UserController userController;
-    private FolderRepository folderRepository;
-    private GroupRepository groupRepository;
-    private LinksRepository linksRepository;
+    private LinksAndGroupsController linksAndGroupsController;
     private DeletionLogRepository deletionLogRepository;
+    private UserBansController userBansController;
 
     private String bot_token;
     private String bot_name;
@@ -69,6 +71,8 @@ public class TBot extends TelegramLongPollingBot {
             /addAdmin username - Добавляет нового админа с базовыми правами
             /delete_Folder - позволяет удалить папку с файлами
             /delete_Group - позволяет удалить группу с ссылками
+            /ban_user chatId banType(FULL_BAN | SHARING_BAN) причина - блокирует пользователя, SHARING_BAN Лишает возможности сохранять ссылки и файлы
+            /unban_user chatId - снять бан с пользователя
             """;
 
     private final StringBuilder notification = new StringBuilder("Нет каких либо оповещений");
@@ -102,24 +106,21 @@ public class TBot extends TelegramLongPollingBot {
 
     private void loadConfig() {
         loadDataFromProperty();
-        folderRepository = new FolderRepository();
-        fileTrackerRepository = new FileTrackerRepository();
-        filesController = new FilesController(this, folderRepository, fileTrackerRepository, bot_token, delimiter, path, maxFileSize);
+        filesAndFoldersController = new FilesAndFoldersController();
+        filesController = new FilesController(this, filesAndFoldersController, bot_token, delimiter, path, maxFileSize);
         scheduleCache = new ScheduleCache(duration);
-        userRepository = new UserRepository();
-        adminRepository = new AdminRepository();
         Runtime.getRuntime().addShutdownHook(new Thread(executorService::close));
         try (ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1)) {
             scheduler.scheduleAtFixedRate(scheduleCache::clearExpiredCache, duration, duration, TimeUnit.MINUTES);
         }
-        userController = new UserController(userRepository, adminRepository);
-        groupRepository = new GroupRepository();
-        linksRepository = new LinksRepository();
-        markupSetter = new MarkupSetter(filesController, fileTrackerRepository, folderRepository, userController, linksRepository, groupRepository);
+        userController = new UserController();
+        linksAndGroupsController = new LinksAndGroupsController();
+        markupSetter = new MarkupSetter(filesController, filesAndFoldersController, userController, linksAndGroupsController);
         userController.addAdminsFromProperty(adminsFromProperty);
         filesController.synchronizeFoldersWithDatabase();
         filesController.synchronizeFilesWithDatabase();
         deletionLogRepository = new DeletionLogRepository();
+        userBansController = new UserBansController();
     }
 
     @Override
@@ -135,6 +136,14 @@ public class TBot extends TelegramLongPollingBot {
         } else {
             updateHasTextOnly(update);
         }
+    }
+
+    private BanInfo getBanInfo(long chatId) {
+        return userBansController.getUserBanInfo(chatId);
+    }
+
+    private boolean isBanned(long chatId) {
+        return userBansController.isUserBanned(chatId);
     }
 
     private SendMessage setSendMessageWithDefaultMarkup(long chatId, String data, MarkupKey key) {
@@ -175,7 +184,7 @@ public class TBot extends TelegramLongPollingBot {
         SendMessage sendMessage;
         switch (data) {
             case "DocumentSaved" -> {
-                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Файл сохранен", MarkupKey.MainMenu);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Файл сохранен", MarkupKey.MAIN_MENU);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -185,7 +194,7 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "IncorrectFileExtension" -> {
-                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Неверный формат файла, попробуйте поменять название или тип файла", MarkupKey.MainMenu);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Неверный формат файла, попробуйте поменять название или тип файла", MarkupKey.MAIN_MENU);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -195,7 +204,7 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "FileTooBig" -> {
-                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Файл слишком большой!", MarkupKey.MainMenu);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Файл слишком большой!", MarkupKey.MAIN_MENU);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -205,9 +214,9 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "FolderAdded" -> {
-                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Папка сохранена", MarkupKey.MainMenu);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Папка сохранена", MarkupKey.MAIN_MENU);
                 // Убираем статус создания папки
-                userRepository.updateCanAddFolder(chatId, (byte) 0);
+                userController.updateCanAddFolder(chatId, (byte) 0);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -217,7 +226,7 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "SimpleError" -> {
-                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Произошла неизвестная ошибка", MarkupKey.MainMenu);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Произошла неизвестная ошибка", MarkupKey.MAIN_MENU);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -226,7 +235,7 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "AdminError" -> {
-                sendMessage = setSendMessageWithDefaultMarkup(chatId, "У вас нет прав на использование команды", MarkupKey.MainMenu);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "У вас нет прав на использование команды", MarkupKey.MAIN_MENU);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -235,7 +244,7 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "AdminAdded" -> {
-                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Админ добавлен", MarkupKey.MainMenu);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Админ добавлен", MarkupKey.MAIN_MENU);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -244,7 +253,7 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "PathCheckError" -> {
-                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Для хранения файлов выберите папку своей группы", MarkupKey.MainMenu);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Для хранения файлов выберите папку своей группы", MarkupKey.MAIN_MENU);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -253,7 +262,7 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "InvalidFileName" -> {
-                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Возникла ошибка, название файла слишком большое, сделайте его поменьше и попытайтесь снова", MarkupKey.MainMenu);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Возникла ошибка, название файла слишком большое, сделайте его поменьше и попытайтесь снова", MarkupKey.MAIN_MENU);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -262,8 +271,8 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "LinkSaved" -> {
-                userRepository.updateCanAddLink(chatId, (byte) 0);
-                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Ссылка сохранена!", MarkupKey.MainMenu);
+                userController.updateCanAddLink(chatId, (byte) 0);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Ссылка сохранена!", MarkupKey.MAIN_MENU);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -272,8 +281,48 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "GroupSaved" -> {
-                userRepository.updateCanAddGroup(chatId, (byte) 0);
-                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Новая группа сохранена", MarkupKey.MainMenu);
+                userController.updateCanAddGroup(chatId, (byte) 0);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Новая группа сохранена", MarkupKey.MAIN_MENU);
+                try {
+                    execute(sendMessage);
+                } catch (TelegramApiException e) {
+                    System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
+                }
+                return;
+            }
+            case "TooFewArgs" -> {
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Недостаточно аргументов команды", MarkupKey.MAIN_MENU);
+                try {
+                    execute(sendMessage);
+                } catch (TelegramApiException e) {
+                    System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
+                }
+                return;
+            }
+            case "InvalidUserChatId" -> {
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Неправильный формат chatId пользователя", MarkupKey.MAIN_MENU);
+                try {
+                    execute(sendMessage);
+                } catch (TelegramApiException e) {
+                    System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
+                }
+                return;
+            }
+            case "FullBan" -> {
+                BanInfo banInfo = userBansController.getUserBanInfo(chatId);
+                String text = "Вы заблокированы, причина : \n" + banInfo.getReason();
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, text, MarkupKey.NONE);
+                try {
+                    execute(sendMessage);
+                } catch (TelegramApiException e) {
+                    System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
+                }
+                return;
+            }
+            case "SharingBan" -> {
+                BanInfo banInfo = userBansController.getUserBanInfo(chatId);
+                String text = "Вы не можете сохранять папки и ссылки, причина : \n" + banInfo.getReason();
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, text, MarkupKey.MAIN_MENU);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -284,15 +333,12 @@ public class TBot extends TelegramLongPollingBot {
         }
         if (data.endsWith("File")) {
             long fileId = Long.parseLong(data.replaceAll("File$", ""));
-            FileDTO fileDTO = fileTrackerRepository.getFileInfoByFileId(fileId);
+            FileDTO fileDTO = filesAndFoldersController.getFileInfoByFileId(fileId);
             MessageWithDocBuilder message = new MessageWithDocBuilder(chatId, fileDTO);
             SendDocument sendDocument = message.getMessage();
             if (isAdmin(chatId)) {
-                long userId = fileTrackerRepository.getFilesChatIdById(fileId);
-                String username = userRepository.getUserName(userId);
-                sendDocument.setCaption("Данный файл отправлен : " +
-                        (!username.isEmpty() ? username : " у данного пользователя нет username")
-                        + "\nChatId: " + userId);
+                long userChatId = filesAndFoldersController.getFilesChatIdById(fileId);
+                sendDocument.setCaption(userController.getUserInfo(userChatId));
             }
             try {
                 execute(sendDocument);
@@ -303,10 +349,10 @@ public class TBot extends TelegramLongPollingBot {
             }
         } else if (data.endsWith("_lnk")) {
             long linkId = Long.parseLong(data.replaceAll("_lnk$", ""));
-            String link = linksRepository.getLinkById(linkId);
+            String link = linksAndGroupsController.getLinkById(linkId);
             if (isAdmin(chatId)) {
-                long userChatId = linksRepository.getUsersChatIdByLinkId(linkId);
-                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Вот ваша ссылка \n" + link + "\nChatId отправителя: " + userChatId, MarkupKey.NONE);
+                long userChatId = linksAndGroupsController.getUsersChatIdByLinkId(linkId);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Вот ваша ссылка \n" + link + "\n" + userController.getUserInfo(userChatId), MarkupKey.NONE);
             } else {
                 sendMessage = setSendMessageWithDefaultMarkup(chatId, "Вот ваша ссылка \n" + link, MarkupKey.NONE);
             }
@@ -315,28 +361,31 @@ public class TBot extends TelegramLongPollingBot {
             } catch (TelegramApiException e) {
                 System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
             }
-        } else if (LinkUtil.isValidLinkFormat(data.trim())) {
-            if (userRepository.getCanAddLink(chatId)) {
-                String[] parts = data.split(":");
-                String linkName = parts[0].trim();
-                String link = parts[1].trim();
-                String group = userRepository.getGroupForLinks(chatId);
-                linksRepository.addLink(linkName, link, group, chatId);
-                sendNewMessageResponse(chatId, "LinkSaved");
-            } else {
-                sendNewMessageResponse(chatId, "SimpleError");
-            }
-        } else if (userRepository.getCanAddGroup(chatId)) {
-            groupRepository.addNewGroup(data.trim());
-            sendNewMessageResponse(chatId, "GroupSaved");
-        } else if (FilesController.checkFileName(data) && userRepository.getCanAddFolder(chatId)) {
-            if (!FilesController.checkFileName(data)) {
-                sendNewMessageResponse(chatId, "InvalidFileName");
-            } else {
-                String folderName = data.trim();
-                filesController.addFolder(folderName);
-                fileTrackerRepository.putFileInfoToFilesHistory(chatId, folderName, "");
-                sendNewMessageResponse(chatId, "FolderAdded");
+        } else if (!isBanned(chatId)) {
+            // Если пользователь не забанен по любой причине, то может сохранять ссылки, папки и т.д.
+            if (LinkUtil.isValidLinkFormat(data.trim())) {
+                if (userController.getCanAddLink(chatId)) {
+                    String[] parts = data.split(":");
+                    String linkName = parts[0].trim();
+                    String link = parts[1].trim();
+                    String group = userController.getGroupForLinks(chatId);
+                    linksAndGroupsController.addLink(linkName, link, group, chatId);
+                    sendNewMessageResponse(chatId, "LinkSaved");
+                } else {
+                    sendNewMessageResponse(chatId, "SimpleError");
+                }
+            } else if (userController.getCanAddGroup(chatId)) {
+                linksAndGroupsController.addNewGroup(chatId, data.trim());
+                sendNewMessageResponse(chatId, "GroupSaved");
+            } else if (FilesController.checkFileName(data) && userController.getCanAddFolder(chatId)) {
+                if (!FilesController.checkFileName(data)) {
+                    sendNewMessageResponse(chatId, "InvalidFileName");
+                } else {
+                    String folderName = data.trim();
+                    filesController.addFolder(chatId, folderName);
+                    sendNewMessageResponse(chatId, "FolderAdded");
+                }
+
             }
         }
     }
@@ -346,7 +395,7 @@ public class TBot extends TelegramLongPollingBot {
         SendMessage sendMessage;
         switch (data) {
             case "/start" -> {
-                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Выберите функцию", MarkupKey.MainMenu);
+                sendMessage = setSendMessageWithDefaultMarkup(chatId, "Выберите функцию", MarkupKey.MAIN_MENU);
                 try {
                     execute(sendMessage);
                 } catch (TelegramApiException e) {
@@ -392,7 +441,7 @@ public class TBot extends TelegramLongPollingBot {
             }
             String text = data.replaceAll("/sendToAll", "");
             if (!text.isEmpty()) {
-                List<Long> chatIdArray = userRepository.getAllUsersChatId();
+                List<Long> chatIdArray = userController.getAllUsersChatId();
                 if (!chatIdArray.isEmpty()) {
                     sendToAll(chatIdArray, text);
                 }
@@ -411,7 +460,7 @@ public class TBot extends TelegramLongPollingBot {
             }
         } else if (data.contains("/addAdmin")) {
             boolean isAdmin = isAdmin(chatId);
-            String adminRole = adminRepository.getAdminRole(userRepository.getUserName(chatId));
+            String adminRole = userController.getAdminRole(chatId);
             if (!isAdmin || !adminRole.equals(AdminRole.Main.toString())) {
                 checkMessageBeforeResponse(chatId, "AdminError");
                 System.out.printf("Trying to access admin command without admin rights, chatId : %d%n", chatId);
@@ -421,7 +470,55 @@ public class TBot extends TelegramLongPollingBot {
             if (userController.addBaseAdmin(adminUsername)) {
                 checkMessageBeforeResponse(chatId, "AdminAdded");
             }
+        } else if (data.contains("/ban_user")) {
+            String[] args = data.split(" ");
+            if (args.length < 3) {
+                sendNewMessageResponse(chatId, "TooFewArgs");
+                return;
+            }
+            try {
+                long userChatId = Long.parseLong(args[1]);
+                if (userChatId == chatId) {
+                    sendNewMessageResponse(chatId, "InvalidUserChatId");
+                    return;
+                }
+                BanInfo banInfo = setBanInfo(args, chatId);
+                userBansController.banUser(userChatId, banInfo);
+                checkMessageBeforeResponse(chatId, "/start");
+            } catch (NumberFormatException e) {
+                sendNewMessageResponse(chatId, "InvalidUserChatId");
+            }
+        } else if (data.contains("/unban_user")) {
+            String[] args = data.split(" ");
+            if (args.length < 2) {
+                sendNewMessageResponse(chatId, "TooFewArgs");
+                return;
+            }
+            try {
+                long userChatId = Long.parseLong(args[1]);
+                userBansController.unbanUser(userChatId, chatId);
+                checkMessageBeforeResponse(chatId, "/start");
+            } catch (NumberFormatException e) {
+                sendNewMessageResponse(chatId, "InvalidUserChatId");
+            }
         }
+    }
+
+    private BanInfo setBanInfo(String[] args, long adminChatId) {
+        String banType = args[2];
+        if (!banType.equals(BanType.FULL_BAN.toString()) && !banType.equals(BanType.SHARING_BAN.toString())) {
+            banType = "SHARING_BAN";
+        }
+        StringBuilder reason = new StringBuilder();
+        for (int i = 3; i < args.length; i++) {
+            reason.append(args[i]);
+        }
+        String banReason = reason.toString();
+        return BanInfo.builder()
+                .banType(banType)
+                .reason(banReason)
+                .adminChatId(adminChatId)
+                .build();
     }
 
     private void checkMessageBeforeResponse(long chatId, String data) {
@@ -438,6 +535,15 @@ public class TBot extends TelegramLongPollingBot {
     private void updateHasTextOnly(Update update) {
 
         long chatId = userController.getChatId(update);
+
+        if (isBanned(chatId)) {
+            BanInfo banInfo = getBanInfo(chatId);
+            if (banInfo.getBanType().equals(BanType.FULL_BAN.toString())) {
+                sendNewMessageResponse(chatId, "FullBan");
+                return;
+            }
+        }
+
         String data = update.getMessage().getText();
         userController.checkAndAddUser(update);
 
@@ -457,7 +563,7 @@ public class TBot extends TelegramLongPollingBot {
             int delimiterIndex = target.indexOf(delimiter);
             String folder = target.substring(0, delimiterIndex);
             String file = target.substring(delimiterIndex + 1);
-            fileTrackerRepository.putFileInfo(chatId, folder, file);
+            filesAndFoldersController.putFileInfo(chatId, folder, file);
             System.out.printf("Сохранен документ от пользователя %d%nДокумент: %s/%s%n", chatId, folder, document.getFileName());
             checkMessageBeforeResponse(chatId, "DocumentSaved");
         } else {
@@ -468,11 +574,22 @@ public class TBot extends TelegramLongPollingBot {
     private void updateHasDocument(Update update) {
         long chatId = userController.getChatId(update);
 
+        if (isBanned(chatId)) {
+            BanInfo banInfo = getBanInfo(chatId);
+            if (banInfo.getBanType().equals(BanType.FULL_BAN.toString())) {
+                sendNewMessageResponse(chatId, "FullBan");
+                return;
+            } else if (banInfo.getBanType().equals(BanType.SHARING_BAN.toString())) {
+                sendNewMessageResponse(chatId, "SharingBan");
+                return;
+            }
+        }
+
         // Убираем статус добавления новой папки
-        userRepository.updateCanAddFolder(chatId, (byte) 0);
+        userController.updateCanAddFolder(chatId, (byte) 0);
 
         // Проверка выбранного пользователем пути
-        String userPath = userRepository.getFilePath(chatId);
+        String userPath = userController.getFilePath(chatId);
         if (userPath.isEmpty()) {
             checkMessageBeforeResponse(chatId, "PathCheckError");
             return;
@@ -512,7 +629,7 @@ public class TBot extends TelegramLongPollingBot {
                     message = setEditMessageWithoutMarkup(chatId, helpResponse, messageId);
                 }
                 try {
-                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
+                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MAIN_MENU));
                     execute(message);
                 } catch (TelegramApiException e) {
                     System.err.printf("The new text equals with old: Error (TBotClass (method sendEditMessageResponse(Help))) %s%n", e);
@@ -523,7 +640,7 @@ public class TBot extends TelegramLongPollingBot {
             }
             case "LessonButton" -> {
                 message = setEditMessageWithoutMarkup(chatId, "Выберите дату", messageId);
-                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.LessonMenu));
+                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.LESSON_MENU));
                 try {
                     execute(message);
                 } catch (TelegramApiException e) {
@@ -534,7 +651,7 @@ public class TBot extends TelegramLongPollingBot {
             }
             case "BackButton" -> {
                 message = setEditMessageWithoutMarkup(chatId, "Выберите функцию", messageId);
-                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
+                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MAIN_MENU));
                 try {
                     execute(message);
                 } catch (TelegramApiException e) {
@@ -555,7 +672,7 @@ public class TBot extends TelegramLongPollingBot {
             }
             case "AddFolderButton" -> {
                 if (isAdmin(chatId)) {
-                    userRepository.updateCanAddFolder(chatId, (byte) 1);
+                    userController.updateCanAddFolder(chatId, (byte) 1);
                     message = setEditMessageWithoutMarkup(chatId, "Отправьте название папки", messageId);
                     try {
                         message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK_TO_FILES));
@@ -571,7 +688,7 @@ public class TBot extends TelegramLongPollingBot {
             }
             case "AddGroupButton" -> {
                 if (isAdmin(chatId)) {
-                    userRepository.updateCanAddGroup(chatId, (byte) 1);
+                    userController.updateCanAddGroup(chatId, (byte) 1);
                     message = setEditMessageWithoutMarkup(chatId, "Отправьте название группы", messageId);
                     try {
                         message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK_TO_LINKS));
@@ -586,7 +703,7 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "TodayScheduleButton" -> {
-                String groupId = userRepository.getGroupId(chatId);
+                String groupId = userController.getGroupId(chatId);
                 if (groupId.isEmpty()) {
                     sendEditMessageResponse(chatId, "GroupNotSelected", messageId);
                     return;
@@ -594,7 +711,7 @@ public class TBot extends TelegramLongPollingBot {
                 String scheduleToday = scheduleCache.getScheduleToday(groupId);
                 message = setEditMessageWithoutMarkup(chatId, scheduleToday, messageId);
                 try {
-                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.LessonMenu));
+                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.LESSON_MENU));
                     execute(message);
                 } catch (TelegramApiException e) {
                     System.err.println("The new text equals with old: Error (TBotClass (method sendEditMessage(TodaySchedule))) " + e);
@@ -604,7 +721,7 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "TomorrowScheduleButton" -> {
-                String groupId = userRepository.getGroupId(chatId);
+                String groupId = userController.getGroupId(chatId);
                 if (groupId.isEmpty()) {
                     sendEditMessageResponse(chatId, "GroupNotSelected", messageId);
                     return;
@@ -612,7 +729,7 @@ public class TBot extends TelegramLongPollingBot {
                 String scheduleTomorrow = scheduleCache.getScheduleTomorrow(groupId);
                 message = setEditMessageWithoutMarkup(chatId, scheduleTomorrow, messageId);
                 try {
-                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.LessonMenu));
+                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.LESSON_MENU));
                     execute(message);
                 } catch (TelegramApiException e) {
                     System.err.println("The new text equals with old: Error (TBotClass (method sendEditMessage(TomorrowSchedule))) " + e);
@@ -636,7 +753,7 @@ public class TBot extends TelegramLongPollingBot {
             case "GetNotification" -> {
                 message = setEditMessageWithoutMarkup(chatId, notification.toString(), messageId);
                 try {
-                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
+                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MAIN_MENU));
                     execute(message);
                 } catch (TelegramApiException | IllegalArgumentException e) {
                     System.err.println("The new text equals with old: Error (TBotClass (method sendEditMessageResponse(GetNotification))) " + e);
@@ -690,7 +807,7 @@ public class TBot extends TelegramLongPollingBot {
             case "ErrorDeleteLinks" -> {
                 message = setEditMessageWithoutMarkup(chatId, "Возникла ошибка при удалении ссылки", messageId);
                 try {
-                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
+                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MAIN_MENU));
                     execute(message);
                 } catch (TelegramApiException | IllegalArgumentException e) {
                     System.err.println("Error (TBotClass (method sendEditMessageResponse(SelectYearButtons))) " + e);
@@ -700,7 +817,7 @@ public class TBot extends TelegramLongPollingBot {
             case "SimpleError" -> {
                 message = setEditMessageWithoutMarkup(chatId, "Произошла неожиданная ошибка", messageId);
                 try {
-                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
+                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MAIN_MENU));
                     execute(message);
                 } catch (TelegramApiException | IllegalArgumentException e) {
                     System.err.println("Error (TBotClass (method sendEditMessageResponse(SelectYearButtons))) " + e);
@@ -710,11 +827,31 @@ public class TBot extends TelegramLongPollingBot {
             case "AdminError" -> {
                 message = setEditMessageWithoutMarkup(chatId, "У вас нет прав для этого действия", messageId);
                 try {
-                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
+                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MAIN_MENU));
                     execute(message);
                 } catch (TelegramApiException | IllegalArgumentException e) {
                     System.err.println("Error (TBotClass (method sendEditMessageResponse(SelectYearButtons))) " + e);
                 }
+                return;
+            }
+            case "FullBan" -> {
+                BanInfo banInfo = getBanInfo(chatId);
+                String text = "Вы заблокированы, причина : \n" + banInfo.getReason();
+                message = setEditMessageWithoutMarkup(chatId, text, messageId);
+                try {
+                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MAIN_MENU));
+                    execute(message);
+                } catch (TelegramApiException | IllegalArgumentException e) {}
+                return;
+            }
+            case "SharingBan" -> {
+                BanInfo banInfo = getBanInfo(chatId);
+                String text = "Вы не можете сохранять файлы и ссылки, причина : \n" + banInfo.getReason();
+                message = setEditMessageWithoutMarkup(chatId, text, messageId);
+                try {
+                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MAIN_MENU));
+                    execute(message);
+                } catch (TelegramApiException | IllegalArgumentException e) {}
                 return;
             }
         }
@@ -730,14 +867,14 @@ public class TBot extends TelegramLongPollingBot {
             }
         } else if (data.endsWith("_FDel")) {
             long fileId = Long.parseLong(data.replaceAll("_FDel$", ""));
-            FileDTO fileDTO = fileTrackerRepository.getFileInfoByFileId(fileId);
+            FileDTO fileDTO = filesAndFoldersController.getFileInfoByFileId(fileId);
             String correctPath = fileDTO.getFolder() + delimiter + fileDTO.getFileName();
             try {
                 filesController.deleteFile(correctPath);
-                if (fileTrackerRepository.deleteUserFileFromRepository(fileId)) {
+                if (filesAndFoldersController.deleteUserFileFromRepository(fileId)) {
                     message = setEditMessageWithoutMarkup(chatId, "Файл удален!", messageId);
                     try {
-                        message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
+                        message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MAIN_MENU));
                         execute(message);
                     } catch (TelegramApiException | IllegalArgumentException e) {
                         System.err.printf("Error (TBotClass (method sendEditMessageResponse(chatId : %d, data : %s)))%n%s%n", chatId, data, e);
@@ -751,11 +888,11 @@ public class TBot extends TelegramLongPollingBot {
             }
         } else if (data.endsWith("_LDel")) {
             long id = Long.parseLong(data.replaceAll("_LDel", ""));
-            boolean isDeleted = linksRepository.deleteLinkById(id);
+            boolean isDeleted = linksAndGroupsController.deleteLinkById(id);
             if (isDeleted) {
                 message = setEditMessageWithoutMarkup(chatId, "Ссылка удалена!", messageId);
                 try {
-                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
+                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MAIN_MENU));
                     execute(message);
                 } catch (TelegramApiException | IllegalArgumentException e) {
                     System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
@@ -766,13 +903,13 @@ public class TBot extends TelegramLongPollingBot {
             }
         } else if (data.endsWith("_DFolder")) {
             long id = Long.parseLong(data.replaceAll("_DFolder$", ""));
-            if (folderRepository.deleteFolderById(id)) {
+            if (filesAndFoldersController.deleteFolderById(id)) {
                 try {
-                    String folderName = folderRepository.getFolderNameById(id);
+                    String folderName = filesAndFoldersController.getFolderNameById(id);
                     filesController.deleteFolderWithFiles(folderName);
                     deletionLogRepository.addDeletionLog(chatId, "Deleted a folder -> " + folderName);
                     message = setEditMessageWithoutMarkup(chatId, "Папка успешно удалена", messageId);
-                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
+                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MAIN_MENU));
                     execute(message);
                 } catch (IOException | TelegramApiException e) {
                     System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
@@ -783,9 +920,8 @@ public class TBot extends TelegramLongPollingBot {
             }
         } else if(data.endsWith("_DGroup")) {
             long id = Long.parseLong(data.replaceAll("_DGroup$", ""));
-            String groupName = groupRepository.getGroupNameById(id);
-            groupRepository.deleteGroupById(id);
-            linksRepository.deleteLinksByGroup(groupName);
+            linksAndGroupsController.deleteGroupWithLinksByGroupId(id);
+            String groupName = linksAndGroupsController.getGroupNameById(id);
             deletionLogRepository.addDeletionLog(chatId, "Deleted a group -> " + groupName);
             try {
                 message = setEditMessageWithoutMarkup(chatId, "Группа с ссылками удалена", messageId);
@@ -823,8 +959,12 @@ public class TBot extends TelegramLongPollingBot {
                 sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
         } else if (data.endsWith("AddFileButton")) {
+            if (isBanned(chatId)) {
+                sendEditMessageResponse(chatId, "SharingBan", messageId);
+                return;
+            }
             String folder = data.replaceAll("AddFileButton$", "");
-            userRepository.updateFilePath(chatId, folder);
+            userController.updateFilePath(chatId, folder);
             message = setEditMessageWithoutMarkup(chatId, "Теперь отправленные вами файлы будут сохраняться в эту папку: " + folder, messageId);
             try {
                 message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK_TO_FILES));
@@ -834,16 +974,20 @@ public class TBot extends TelegramLongPollingBot {
                 sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
         } else if (data.endsWith("AddLinkButton")) {
+            if (isBanned(chatId)) {
+                sendEditMessageResponse(chatId, "SharingBan", messageId);
+                return;
+            }
             String group = data.replace("AddLinkButton", "");
-            userRepository.updateGroupForLinks(chatId, group);
-            userRepository.updateCanAddLink(chatId, (byte) 1);
+            userController.updateGroupForLinks(chatId, group);
+            userController.updateCanAddLink(chatId, (byte) 1);
             message = setEditMessageWithoutMarkup(chatId, "Отправьте название ссылки и саму ссылку в виде\n" +
                     "название_ссылки:ссылка", messageId);
             try {
                 message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK_TO_LINKS));
                 execute(message);
             } catch (TelegramApiException | IllegalArgumentException e) {
-                userRepository.updateCanAddLink(chatId, (byte) 0);
+                userController.updateCanAddLink(chatId, (byte) 0);
                 System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                 sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
@@ -878,10 +1022,10 @@ public class TBot extends TelegramLongPollingBot {
             String group = data.substring(index);
             group = group.replace("Group=", "");
 
-            userRepository.updateGroupId(chatId, group);
+            userController.updateGroupId(chatId, group);
 
             message = setEditMessageWithoutMarkup(chatId, "Группа сохранена", messageId);
-            message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MainMenu));
+            message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MAIN_MENU));
             try {
                 execute(message);
             } catch (TelegramApiException e) {
@@ -920,13 +1064,23 @@ public class TBot extends TelegramLongPollingBot {
         userController.checkAndAddUser(update);
 
         //удаление статуса создания папки/группы/ссылки
-        userRepository.updateCanAddFolder(chatId, (byte) 0);
-        userRepository.updateCanAddGroup(chatId, (byte) 0);
-        userRepository.updateCanAddLink(chatId, (byte) 0);
+        userController.updateCanAddFolder(chatId, (byte) 0);
+        userController.updateCanAddGroup(chatId, (byte) 0);
+        userController.updateCanAddLink(chatId, (byte) 0);
 
         String callbackQuery = update.getCallbackQuery().getData().trim();
 
         int messageId = update.getCallbackQuery().getMessage().getMessageId();
+
+        if (isBanned(chatId)) {
+            System.out.println("User is banned " + chatId);
+            BanInfo banInfo = getBanInfo(chatId);
+            System.out.println("banInfo type : " + banInfo.getBanType());
+            if (banInfo.getBanType().equals(BanType.FULL_BAN.toString())) {
+                sendEditMessageResponse(chatId, "FullBan", messageId);
+                return;
+            }
+        }
 
         checkCallbackData(chatId, callbackQuery, messageId);
     }
