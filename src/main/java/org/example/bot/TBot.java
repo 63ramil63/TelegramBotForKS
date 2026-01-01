@@ -623,13 +623,9 @@ public class TBot extends TelegramLongPollingBot {
         EditMessageText message;
         switch (data) {
             case "Help" -> {
-                if (isAdmin(chatId)) {
-                    message = setEditMessageWithoutMarkup(chatId, adminHelpResponse, messageId);
-                } else {
-                    message = setEditMessageWithoutMarkup(chatId, helpResponse, messageId);
-                }
+                message = setEditMessageWithoutMarkup(chatId, isAdmin(chatId) ?  adminHelpResponse : helpResponse, messageId);
+                message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MAIN_MENU));
                 try {
-                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MAIN_MENU));
                     execute(message);
                 } catch (TelegramApiException e) {
                     System.err.printf("The new text equals with old: Error (TBotClass (method sendEditMessageResponse(Help))) %s%n", e);
@@ -870,19 +866,8 @@ public class TBot extends TelegramLongPollingBot {
             FileDTO fileDTO = filesAndFoldersController.getFileInfoByFileId(fileId);
             String correctPath = fileDTO.getFolder() + delimiter + fileDTO.getFileName();
             try {
-                filesController.deleteFile(correctPath);
-                if (filesAndFoldersController.deleteUserFileFromRepository(fileId)) {
-                    message = setEditMessageWithoutMarkup(chatId, "Файл удален!", messageId);
-                    try {
-                        message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MAIN_MENU));
-                        execute(message);
-                    } catch (TelegramApiException | IllegalArgumentException e) {
-                        System.err.printf("Error (TBotClass (method sendEditMessageResponse(chatId : %d, data : %s)))%n%s%n", chatId, data, e);
-                    }
-                } else {
-                    sendEditMessageResponse(chatId, "SimpleError", messageId);
-                }
-            } catch (IOException e) {
+                deleteFile(chatId, messageId, fileId, correctPath);
+            } catch (IOException | TelegramApiException e) {
                 System.err.printf("Error (TBotClass (method sendEditMessageResponse(data : %s))) chatId : %d%n%s%n", data, chatId, e);
                 sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
@@ -903,14 +888,10 @@ public class TBot extends TelegramLongPollingBot {
             }
         } else if (data.endsWith("_DFolder")) {
             long id = Long.parseLong(data.replaceAll("_DFolder$", ""));
+            String folderName = filesAndFoldersController.getFolderNameById(id);
             if (filesAndFoldersController.deleteFolderById(id)) {
                 try {
-                    String folderName = filesAndFoldersController.getFolderNameById(id);
-                    filesController.deleteFolderWithFiles(folderName);
-                    deletionLogRepository.addDeletionLog(chatId, "Deleted a folder -> " + folderName);
-                    message = setEditMessageWithoutMarkup(chatId, "Папка успешно удалена", messageId);
-                    message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MAIN_MENU));
-                    execute(message);
+                    deleteFolder(chatId, messageId, folderName);
                 } catch (IOException | TelegramApiException e) {
                     System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
                     sendEditMessageResponse(chatId, "SimpleError", messageId);
@@ -922,7 +903,7 @@ public class TBot extends TelegramLongPollingBot {
             long id = Long.parseLong(data.replaceAll("_DGroup$", ""));
             linksAndGroupsController.deleteGroupWithLinksByGroupId(id);
             String groupName = linksAndGroupsController.getGroupNameById(id);
-            deletionLogRepository.addDeletionLog(chatId, "Deleted a group -> " + groupName);
+            deletionLogRepository.addDeletionLog(chatId, "Delete group -> " + groupName);
             try {
                 message = setEditMessageWithoutMarkup(chatId, "Группа с ссылками удалена", messageId);
                 message.setReplyMarkup(markupSetter.getChangeableMarkup("LinksButton"));
@@ -992,14 +973,7 @@ public class TBot extends TelegramLongPollingBot {
                 sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
         } else if (data.endsWith("_lnk")) {
-
-            DeleteMessageBuilder deleteMessage = new DeleteMessageBuilder(chatId, messageId);
-            try {
-                execute(deleteMessage.getMessage());
-            } catch (TelegramApiException e) {
-                System.err.printf("Error (TBotClass (sendEditMessageResponse(chatId : %d, data : %s)))%n%s%n", chatId, data, e);
-            }
-
+            deleteMessage(chatId, messageId);
             sendNewMessageResponse(chatId, data);
             checkMessageBeforeResponse(chatId, "/start");
         } else if (data.contains("Year")) {
@@ -1033,6 +1007,26 @@ public class TBot extends TelegramLongPollingBot {
                 sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
         }
+    }
+
+    private void deleteFile(long chatId, int messageId, long fileId, String correctPath) throws IOException, TelegramApiException {
+        filesController.deleteFile(correctPath);
+        if (filesAndFoldersController.deleteUserFileFromRepository(fileId)) {
+            EditMessageText message = setEditMessageWithoutMarkup(chatId, "Файл удален!", messageId);
+            message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MAIN_MENU));
+            execute(message);
+        } else {
+            sendEditMessageResponse(chatId, "SimpleError", messageId);
+        }
+    }
+
+    private void deleteFolder(long chatId, int messageId, String folderName) throws IOException, TelegramApiException {
+        EditMessageText message;
+        filesController.deleteFolderWithFiles(folderName);
+        deletionLogRepository.addDeletionLog(chatId, "Deleted a folder -> " + folderName);
+        message = setEditMessageWithoutMarkup(chatId, "Папка успешно удалена", messageId);
+        message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.MAIN_MENU));
+        execute(message);
     }
 
     private void deleteMessage(long chatId, int messageId) {
