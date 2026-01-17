@@ -34,6 +34,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.FileSystems;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Properties;
@@ -92,7 +93,7 @@ public class TBot extends TelegramLongPollingBot {
             //путь, где хранятся файлы
             path = properties.getProperty("path");
             //указываем разделитель '\\ для win' | '/ для Linux'
-            delimiter = properties.getProperty("delimiter");
+            delimiter = FileSystems.getDefault().getSeparator();
             //допустимые расширения файлов
             allowedExtensions = List.of(properties.getProperty("extensions").split(","));
             //макс размер файла в мб
