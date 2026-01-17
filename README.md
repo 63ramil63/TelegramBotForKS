@@ -20,8 +20,6 @@ user =пользовательБазыДанных
 
 pass =парольПользователяБД
 
-delimiter =разделитель в файловой системе '\' windows, '/' linux
-
 extensions =docx,doc,txt,pdf,rtf,odt,html,epub,xls,xlsx,csv,ppt,pptx,odp,pdf,jpeg,png,gif,webp,tiff,raw
 
 fileMaxSize =30 - макс размер загружаемого файла в мб
