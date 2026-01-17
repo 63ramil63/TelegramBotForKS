@@ -25,17 +25,22 @@ public class ScheduleCache {
         this.cacheDuration = duration;
     }
 
-    private void parseSchedule(String groupId) {
+    public String[] getSchedule(String groupId) {
         String today = formatDate(true);
         String tomorrow = formatDate(false);
         WebSite webSite = new WebSite();
         String scheduleToday = webSite.getSchedule(today, groupId);
         String scheduleTomorrow = webSite.getSchedule(tomorrow, groupId);
-        putSchedule(groupId, scheduleToday, scheduleTomorrow);
+        return new String[] {scheduleToday, scheduleTomorrow};
+    }
+
+    private void parseSchedule(String groupId) {
+        String[] schedule = getSchedule(groupId);
+        putSchedule(groupId, schedule[0], schedule[1]);
     }
 
     public synchronized String getScheduleToday(String groupId) {
-        if (!cachedSchedule.containsKey(groupId) ||cachedSchedule.get(groupId).isExpired()) {
+        if (!cachedSchedule.containsKey(groupId) || cachedSchedule.get(groupId).isExpired()) {
             System.out.println("Today cache expired, groupId: " + groupId);
             clearExpiredCache();
             parseSchedule(groupId);
