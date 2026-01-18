@@ -1,6 +1,5 @@
 package org.example.controller;
 
-import org.example.bot.ban.types.BanType;
 import org.example.bot.ban.types.ban.BanList;
 import org.example.bot.ban.types.ban.info.BanInfo;
 import org.example.database.repository.UserBansHistoryRepository;

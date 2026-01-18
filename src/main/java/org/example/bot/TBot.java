@@ -3,6 +3,7 @@ package org.example.bot;
 import org.example.Main;
 import org.example.bot.ban.types.BanType;
 import org.example.bot.ban.types.ban.info.BanInfo;
+import org.example.bot.config.BotConfig;
 import org.example.bot.message.DeleteMessageBuilder;
 import org.example.bot.message.EditMessageBuilder;
 import org.example.bot.message.MessageBuilder;
@@ -42,7 +43,7 @@ import java.util.concurrent.*;
 
 public class TBot extends TelegramLongPollingBot {
 
-    private final ExecutorService executorService = new ThreadPoolExecutor(4, 10, 60L, TimeUnit.SECONDS, new LinkedBlockingDeque<>(100));
+    private ExecutorService executorService;
     private FilesAndFoldersController filesAndFoldersController;
     private MarkupSetter markupSetter;
     private FilesController filesController;
@@ -52,14 +53,7 @@ public class TBot extends TelegramLongPollingBot {
     private DeletionLogRepository deletionLogRepository;
     private UserBansController userBansController;
 
-    private String bot_token;
-    private String bot_name;
-    private int duration;
-    private List<String> allowedExtensions;
-    public static String path;
-    public static int maxFileSize;
-    public static String delimiter;
-    private static List<String> adminsFromProperty;
+    public static BotConfig config;
 
     private final String helpResponse = "Напишите /start, если что-то сломалось \n" +
             "Чтобы сохранить файл, выберите путь и скиньте файл боту\n" +
@@ -78,46 +72,25 @@ public class TBot extends TelegramLongPollingBot {
 
     private final StringBuilder notification = new StringBuilder("Нет каких либо оповещений");
 
-    public TBot() {
+    public TBot(BotConfig config) {
+        this.config = config;
         loadConfig();
     }
 
-    private void loadDataFromProperty() {
-        Properties properties = new Properties();
-        try (InputStream is = new FileInputStream(Main.propertyPath)) {
-            properties.load(is);
-            bot_token = properties.getProperty("bot_token");
-            bot_name = properties.getProperty("bot_name");
-            //время обновления расписания в минутах
-            duration = Integer.parseInt(properties.getProperty("duration"));
-            //путь, где хранятся файлы
-            path = properties.getProperty("path");
-            //указываем разделитель '\\ для win' | '/ для Linux'
-            delimiter = FileSystems.getDefault().getSeparator();
-            //допустимые расширения файлов
-            allowedExtensions = List.of(properties.getProperty("extensions").split(","));
-            //макс размер файла в мб
-            maxFileSize = Integer.parseInt(properties.getProperty("fileMaxSize"));
-            adminsFromProperty = List.of(properties.getProperty("admins").split(","));
-        } catch (IOException e) {
-            System.err.printf("Error (TBotClass (method loadConfig())) %s", e);
-            System.exit(505);
-        }
-    }
-
     private void loadConfig() {
-        loadDataFromProperty();
+        executorService = new ThreadPoolExecutor(config.getThreadPoolSize(), config.getThreadPoolSize(), 60L, TimeUnit.SECONDS, new LinkedBlockingDeque<>(100));
         filesAndFoldersController = new FilesAndFoldersController();
-        filesController = new FilesController(this, filesAndFoldersController, bot_token, delimiter, path, maxFileSize);
-        scheduleCache = new ScheduleCache(duration);
+        filesController = new FilesController(this, filesAndFoldersController, config.getBotToken(),
+                config.getFileDelimiter(), config.getFileStoragePath(), config.getMaxFileSize());
+        scheduleCache = new ScheduleCache(config.getCacheDuration());
         Runtime.getRuntime().addShutdownHook(new Thread(executorService::close));
         try (ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1)) {
-            scheduler.scheduleAtFixedRate(scheduleCache::clearExpiredCache, duration, duration, TimeUnit.MINUTES);
+            scheduler.scheduleAtFixedRate(scheduleCache::clearExpiredCache, config.getCacheDuration(), config.getCacheDuration(), TimeUnit.MINUTES);
         }
         userController = new UserController();
         linksAndGroupsController = new LinksAndGroupsController();
         markupSetter = new MarkupSetter(filesController, filesAndFoldersController, userController, linksAndGroupsController);
-        userController.addAdminsFromProperty(adminsFromProperty);
+        userController.addAdminsFromProperty(config.getInitialAdmins());
         filesController.synchronizeFoldersWithDatabase();
         filesController.synchronizeFilesWithDatabase();
         deletionLogRepository = new DeletionLogRepository();
@@ -555,13 +528,13 @@ public class TBot extends TelegramLongPollingBot {
     private void saveDocument(Update update, String fileName, String userPath, long chatId)
             throws IncorrectExtensionException, IOException, FileSizeException, TelegramApiException, InvalidCallbackDataException {
         // Получение расширения, документа и описания к нему
-        String extension = FilesController.checkFileExtension(fileName, allowedExtensions);
+        String extension = FilesController.checkFileExtension(fileName, config.getAllowedExtensions());
         Document document = update.getMessage().getDocument();
         String caption = update.getMessage().getCaption();
         String pathToFile = filesController.saveDocument(document, caption, extension, userPath);
         if (!pathToFile.isEmpty()) {
-            String target = pathToFile.replace(path, "");
-            int delimiterIndex = target.indexOf(delimiter);
+            String target = pathToFile.replace(config.getFileStoragePath(), "");
+            int delimiterIndex = target.indexOf(config.getFileDelimiter());
             String folder = target.substring(0, delimiterIndex);
             String file = target.substring(delimiterIndex + 1);
             filesAndFoldersController.putFileInfo(chatId, folder, file);
@@ -595,7 +568,7 @@ public class TBot extends TelegramLongPollingBot {
             checkMessageBeforeResponse(chatId, "PathCheckError");
             return;
         }
-        userPath = path + userPath;
+        userPath = config.getFileStoragePath() + userPath;
         String fileName = update.getMessage().getDocument().getFileName();
         try {
             saveDocument(update, fileName, userPath, chatId);
@@ -865,7 +838,7 @@ public class TBot extends TelegramLongPollingBot {
         } else if (data.endsWith("_FDel")) {
             long fileId = Long.parseLong(data.replaceAll("_FDel$", ""));
             FileDTO fileDTO = filesAndFoldersController.getFileInfoByFileId(fileId);
-            String correctPath = fileDTO.getFolder() + delimiter + fileDTO.getFileName();
+            String correctPath = fileDTO.getFolder() + config.getFileDelimiter() + fileDTO.getFileName();
             try {
                 deleteFile(chatId, messageId, fileId, correctPath);
             } catch (IOException | TelegramApiException e) {
@@ -1087,11 +1060,11 @@ public class TBot extends TelegramLongPollingBot {
 
     @Override
     public String getBotUsername() {
-        return bot_name;
+        return config.getBotName();
     }
 
     @Override
     public String getBotToken() {
-        return bot_token;
+        return config.getBotToken();
     }
 }

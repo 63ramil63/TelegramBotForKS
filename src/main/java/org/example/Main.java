@@ -1,6 +1,7 @@
 package org.example;
 
 import org.example.bot.TBot;
+import org.example.bot.config.BotConfig;
 import org.example.database.builder.TableBuilder;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -16,11 +17,12 @@ public class Main {
             System.err.println("Property path cant be null");
             System.exit(101);
         }
+        BotConfig config = BotConfig.load(propertyPath);
         TableBuilder tableBuilder = new TableBuilder();
         tableBuilder.createTables();
         try {
             TelegramBotsApi tBot = new TelegramBotsApi(DefaultBotSession.class);
-            tBot.registerBot(new TBot());
+            tBot.registerBot(new TBot(config));
         } catch (TelegramApiException e) {
             System.out.println("Register bot error: " + e);
             System.exit(100);
