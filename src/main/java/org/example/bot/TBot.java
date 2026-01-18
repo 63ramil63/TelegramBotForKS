@@ -104,14 +104,6 @@ public class TBot extends TelegramLongPollingBot {
         }
     }
 
-    private BanInfo getBanInfo(long chatId) {
-        return userBansController.getUserBanInfo(chatId);
-    }
-
-    private boolean isBanned(long chatId) {
-        return userBansController.isUserBanned(chatId);
-    }
-
     private SendMessage setSendMessageWithDefaultMarkup(long chatId, String data, MarkupKey key) {
         MessageBuilder messageBuilder = new MessageBuilder(data, chatId);
         SendMessage sendMessage = messageBuilder.getMessage();
@@ -327,7 +319,7 @@ public class TBot extends TelegramLongPollingBot {
             } catch (TelegramApiException e) {
                 System.err.printf("Error (TBotClass (method sendNewMessageResponse(data : %s))) %n%s%n", data, e.getMessage());
             }
-        } else if (!isBanned(chatId)) {
+        } else if (!userBansController.isUserBanned(chatId)) {
             // Если пользователь не забанен по любой причине, то может сохранять ссылки, папки и т.д.
             if (LinkUtil.isValidLinkFormat(data.trim())) {
                 if (userController.getCanAddLink(chatId)) {
@@ -502,8 +494,8 @@ public class TBot extends TelegramLongPollingBot {
 
         long chatId = userController.getChatId(update);
 
-        if (isBanned(chatId)) {
-            BanInfo banInfo = getBanInfo(chatId);
+        if (userBansController.isUserBanned(chatId)) {
+            BanInfo banInfo = userBansController.getUserBanInfo(chatId);
             if (banInfo.getBanType().equals(BanType.FULL_BAN.toString())) {
                 sendNewMessageResponse(chatId, "FullBan");
                 return;
@@ -540,8 +532,8 @@ public class TBot extends TelegramLongPollingBot {
     private void updateHasDocument(Update update) {
         long chatId = userController.getChatId(update);
 
-        if (isBanned(chatId)) {
-            BanInfo banInfo = getBanInfo(chatId);
+        if (userBansController.isUserBanned(chatId)) {
+            BanInfo banInfo = userBansController.getUserBanInfo(chatId);
             if (banInfo.getBanType().equals(BanType.FULL_BAN.toString())) {
                 sendNewMessageResponse(chatId, "FullBan");
                 return;
@@ -797,7 +789,7 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "FullBan" -> {
-                BanInfo banInfo = getBanInfo(chatId);
+                BanInfo banInfo = userBansController.getUserBanInfo(chatId);
                 String text = "Вы заблокированы, причина : \n" + banInfo.getReason();
                 message = setEditMessageWithoutMarkup(chatId, text, messageId);
                 try {
@@ -807,7 +799,7 @@ public class TBot extends TelegramLongPollingBot {
                 return;
             }
             case "SharingBan" -> {
-                BanInfo banInfo = getBanInfo(chatId);
+                BanInfo banInfo = userBansController.getUserBanInfo(chatId);
                 String text = "Вы не можете сохранять файлы и ссылки, причина : \n" + banInfo.getReason();
                 message = setEditMessageWithoutMarkup(chatId, text, messageId);
                 try {
@@ -906,7 +898,7 @@ public class TBot extends TelegramLongPollingBot {
                 sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
         } else if (data.endsWith("AddFileButton")) {
-            if (isBanned(chatId)) {
+            if (userBansController.isUserBanned(chatId)) {
                 sendEditMessageResponse(chatId, "SharingBan", messageId);
                 return;
             }
@@ -921,7 +913,7 @@ public class TBot extends TelegramLongPollingBot {
                 sendEditMessageResponse(chatId, "SimpleError", messageId);
             }
         } else if (data.endsWith("AddLinkButton")) {
-            if (isBanned(chatId)) {
+            if (userBansController.isUserBanned(chatId)) {
                 sendEditMessageResponse(chatId, "SharingBan", messageId);
                 return;
             }
@@ -1032,9 +1024,9 @@ public class TBot extends TelegramLongPollingBot {
 
         int messageId = update.getCallbackQuery().getMessage().getMessageId();
 
-        if (isBanned(chatId)) {
+        if (userBansController.isUserBanned(chatId)) {
             System.out.println("User is banned " + chatId);
-            BanInfo banInfo = getBanInfo(chatId);
+            BanInfo banInfo = userBansController.getUserBanInfo(chatId);
             System.out.println("banInfo type : " + banInfo.getBanType());
             if (banInfo.getBanType().equals(BanType.FULL_BAN.toString())) {
                 sendEditMessageResponse(chatId, "FullBan", messageId);
