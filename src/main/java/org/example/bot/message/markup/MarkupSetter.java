@@ -1,6 +1,7 @@
 package org.example.bot.message.markup;
 
 import org.example.bot.TBot;
+import org.example.bot.config.BotConfig;
 import org.example.bot.message.markup.button.ButtonSetter;
 import org.example.controller.FilesAndFoldersController;
 import org.example.controller.LinksAndGroupsController;
@@ -175,7 +176,7 @@ public class MarkupSetter {
         List<FileDTO> filesDTOs = filesAndFoldersController.getAllUserFiles(chatId);
         if (filesDTOs != null && !filesDTOs.isEmpty()) {
             for (FileDTO fileDTO : filesDTOs) {
-                String filePath = fileDTO.getFolder() + TBot.delimiter + fileDTO.getFileName();
+                String filePath = fileDTO.getFolder() + BotConfig.getFileDelimiter() + fileDTO.getFileName();
                 long fileId = fileDTO.getId();
                 InlineKeyboardButton button = ButtonSetter.setButton(filePath, fileId + "_FDel");
                 keyboard.add(ButtonSetter.setRow(button));

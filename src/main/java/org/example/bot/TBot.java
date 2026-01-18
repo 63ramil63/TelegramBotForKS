@@ -1,6 +1,5 @@
 package org.example.bot;
 
-import org.example.Main;
 import org.example.bot.ban.types.BanType;
 import org.example.bot.ban.types.ban.info.BanInfo;
 import org.example.bot.config.BotConfig;
@@ -32,13 +31,9 @@ import org.telegram.telegrambots.meta.api.objects.Document;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.FileSystems;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Properties;
 import java.util.concurrent.*;
 
 public class TBot extends TelegramLongPollingBot {
@@ -52,8 +47,6 @@ public class TBot extends TelegramLongPollingBot {
     private LinksAndGroupsController linksAndGroupsController;
     private DeletionLogRepository deletionLogRepository;
     private UserBansController userBansController;
-
-    public static BotConfig config;
 
     private final String helpResponse = "Напишите /start, если что-то сломалось \n" +
             "Чтобы сохранить файл, выберите путь и скиньте файл боту\n" +
@@ -72,25 +65,24 @@ public class TBot extends TelegramLongPollingBot {
 
     private final StringBuilder notification = new StringBuilder("Нет каких либо оповещений");
 
-    public TBot(BotConfig config) {
-        this.config = config;
+    public TBot() {
         loadConfig();
     }
 
     private void loadConfig() {
-        executorService = new ThreadPoolExecutor(config.getThreadPoolSize(), config.getThreadPoolSize(), 60L, TimeUnit.SECONDS, new LinkedBlockingDeque<>(100));
+        executorService = new ThreadPoolExecutor(BotConfig.getThreadPoolSize(), BotConfig.getMaxThreadPoolSize(), 60L, TimeUnit.SECONDS, new LinkedBlockingDeque<>(100));
         filesAndFoldersController = new FilesAndFoldersController();
-        filesController = new FilesController(this, filesAndFoldersController, config.getBotToken(),
-                config.getFileDelimiter(), config.getFileStoragePath(), config.getMaxFileSize());
-        scheduleCache = new ScheduleCache(config.getCacheDuration());
+        filesController = new FilesController(this, filesAndFoldersController, BotConfig.getBotToken(),
+                BotConfig.getFileDelimiter(), BotConfig.getFileStoragePath(), BotConfig.getMaxFileSize());
+        scheduleCache = new ScheduleCache(BotConfig.getCacheDuration());
         Runtime.getRuntime().addShutdownHook(new Thread(executorService::close));
         try (ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1)) {
-            scheduler.scheduleAtFixedRate(scheduleCache::clearExpiredCache, config.getCacheDuration(), config.getCacheDuration(), TimeUnit.MINUTES);
+            scheduler.scheduleAtFixedRate(scheduleCache::clearExpiredCache, BotConfig.getCacheDuration(), BotConfig.getCacheDuration(), TimeUnit.MINUTES);
         }
         userController = new UserController();
         linksAndGroupsController = new LinksAndGroupsController();
         markupSetter = new MarkupSetter(filesController, filesAndFoldersController, userController, linksAndGroupsController);
-        userController.addAdminsFromProperty(config.getInitialAdmins());
+        userController.addAdminsFromProperty(BotConfig.getInitialAdmins());
         filesController.synchronizeFoldersWithDatabase();
         filesController.synchronizeFilesWithDatabase();
         deletionLogRepository = new DeletionLogRepository();
@@ -528,13 +520,13 @@ public class TBot extends TelegramLongPollingBot {
     private void saveDocument(Update update, String fileName, String userPath, long chatId)
             throws IncorrectExtensionException, IOException, FileSizeException, TelegramApiException, InvalidCallbackDataException {
         // Получение расширения, документа и описания к нему
-        String extension = FilesController.checkFileExtension(fileName, config.getAllowedExtensions());
+        String extension = FilesController.checkFileExtension(fileName, BotConfig.getAllowedExtensions());
         Document document = update.getMessage().getDocument();
         String caption = update.getMessage().getCaption();
         String pathToFile = filesController.saveDocument(document, caption, extension, userPath);
         if (!pathToFile.isEmpty()) {
-            String target = pathToFile.replace(config.getFileStoragePath(), "");
-            int delimiterIndex = target.indexOf(config.getFileDelimiter());
+            String target = pathToFile.replace(BotConfig.getFileStoragePath(), "");
+            int delimiterIndex = target.indexOf(BotConfig.getFileDelimiter());
             String folder = target.substring(0, delimiterIndex);
             String file = target.substring(delimiterIndex + 1);
             filesAndFoldersController.putFileInfo(chatId, folder, file);
@@ -568,7 +560,7 @@ public class TBot extends TelegramLongPollingBot {
             checkMessageBeforeResponse(chatId, "PathCheckError");
             return;
         }
-        userPath = config.getFileStoragePath() + userPath;
+        userPath = BotConfig.getFileStoragePath() + userPath;
         String fileName = update.getMessage().getDocument().getFileName();
         try {
             saveDocument(update, fileName, userPath, chatId);
@@ -838,7 +830,7 @@ public class TBot extends TelegramLongPollingBot {
         } else if (data.endsWith("_FDel")) {
             long fileId = Long.parseLong(data.replaceAll("_FDel$", ""));
             FileDTO fileDTO = filesAndFoldersController.getFileInfoByFileId(fileId);
-            String correctPath = fileDTO.getFolder() + config.getFileDelimiter() + fileDTO.getFileName();
+            String correctPath = fileDTO.getFolder() + BotConfig.getFileDelimiter() + fileDTO.getFileName();
             try {
                 deleteFile(chatId, messageId, fileId, correctPath);
             } catch (IOException | TelegramApiException e) {
@@ -1060,11 +1052,11 @@ public class TBot extends TelegramLongPollingBot {
 
     @Override
     public String getBotUsername() {
-        return config.getBotName();
+        return BotConfig.getBotName();
     }
 
     @Override
     public String getBotToken() {
-        return config.getBotToken();
+        return BotConfig.getBotToken();
     }
 }

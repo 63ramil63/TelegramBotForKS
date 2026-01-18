@@ -13,16 +13,16 @@ public class Main {
     public static void main(String[] args) {
         // получаем путь в котором находится файл с конфигурацией
         propertyPath = args[0];
-        if (propertyPath.isEmpty() || propertyPath == null) {
+        if (propertyPath == null || propertyPath.isEmpty()) {
             System.err.println("Property path cant be null");
             System.exit(101);
         }
-        BotConfig config = BotConfig.load(propertyPath);
+        BotConfig.load(propertyPath);
         TableBuilder tableBuilder = new TableBuilder();
         tableBuilder.createTables();
         try {
             TelegramBotsApi tBot = new TelegramBotsApi(DefaultBotSession.class);
-            tBot.registerBot(new TBot(config));
+            tBot.registerBot(new TBot());
         } catch (TelegramApiException e) {
             System.out.println("Register bot error: " + e);
             System.exit(100);
