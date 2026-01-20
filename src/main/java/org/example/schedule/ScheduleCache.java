@@ -25,7 +25,7 @@ public class ScheduleCache {
         this.cacheDuration = duration;
     }
 
-    public String[] getSchedule(String groupId) {
+    private String[] getSchedule(String groupId) {
         String today = formatDate(true);
         String tomorrow = formatDate(false);
         WebSite webSite = new WebSite();
