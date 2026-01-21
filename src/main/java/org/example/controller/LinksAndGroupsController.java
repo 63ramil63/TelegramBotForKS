@@ -65,8 +65,8 @@ public class LinksAndGroupsController {
     }
 
     public void deleteGroupWithLinksByGroupId(long id) {
-        deleteGroupById(id);
         String groupName = getGroupNameById(id);
+        deleteGroupById(id);
         deleteAllLinksByGroup(groupName);
     }
 }
