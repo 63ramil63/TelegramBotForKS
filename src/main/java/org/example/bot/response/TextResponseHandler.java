@@ -1,6 +1,7 @@
 package org.example.bot.response;
 
 import org.example.bot.TBot;
+import org.example.bot.ban.types.BanType;
 import org.example.bot.ban.types.ban.info.BanInfo;
 import org.example.bot.message.MessageBuilder;
 import org.example.bot.message.MessageWithDocBuilder;
@@ -11,6 +12,8 @@ import org.example.controller.LinksAndGroupsController;
 import org.example.controller.UserBansController;
 import org.example.controller.UserController;
 import org.example.dto.FileDTO;
+import org.example.role.AdminRole;
+import org.example.utility.LinkUtil;
 import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -24,16 +27,18 @@ public class TextResponseHandler {
     private final FilesAndFoldersController filesAndFoldersController;
     private final LinksAndGroupsController linksAndGroupsController;
     private final UserController userController;
+    private final UserBansController userBansController;
 
     public TextResponseHandler(TBot bot, MarkupSetter markupSetter,
                                FilesAndFoldersController filesAndFoldersController,
                                LinksAndGroupsController linksAndGroupsController,
-                               UserController userController) {
+                               UserController userController, UserBansController userBansController) {
         this.bot = bot;
         this.markupSetter = markupSetter;
         this.filesAndFoldersController = filesAndFoldersController;
         this.linksAndGroupsController = linksAndGroupsController;
         this.userController = userController;
+        this.userBansController = userBansController;
     }
 
     public SendMessage createMessageWithMarkup(long chatId, String data, MarkupKey key) {
@@ -52,89 +57,352 @@ public class TextResponseHandler {
         return sendMessage;
     }
 
-    // Основные обработчики ошибок и уведомлений
-    public void sendResponse(long chatId, ResponseType responseType, Object... args) {
-        switch (responseType) {
-            case DOCUMENT_SAVED -> handleDocumentSaved(chatId);
-            case INCORRECT_FILE_EXTENSION -> handleIncorrectFileExtension(chatId);
-            case FILE_TOO_BIG -> handleFileTooBig(chatId);
-            case FOLDER_ADDED -> handleFolderAdded(chatId);
-            case SIMPLE_ERROR -> handleSimpleError(chatId);
-            case ADMIN_ERROR -> handleAdminError(chatId);
-            case PATH_CHECK_ERROR -> handlePathCheckError(chatId);
-            case INVALID_FILE_NAME -> handleInvalidFileName(chatId);
-            case LINK_SAVED -> handleLinkSaved(chatId);
-            case GROUP_SAVED -> handleGroupSaved(chatId);
-            case TOO_FEW_ARGS -> handleTooFewArgs(chatId);
-            case INVALID_USER_CHAT_ID -> handleInvalidUserChatId(chatId);
-            case FULL_BAN -> {
-                if (args.length > 0 && args[0] instanceof BanInfo) {
-                    handleFullBan(chatId, (BanInfo) args[0]);
-                } else {
-                    handleSimpleError(chatId);
-                }
-            }
-            case SHARING_BAN -> {
-                if (args.length > 0 && args[0] instanceof BanInfo) {
-                    handleSharingBan(chatId, (BanInfo) args[0]);
-                } else {
-                    handleSimpleError(chatId);
-                }
-            }
-            case ADMIN_ADDED -> handleAdminAdded(chatId);
-            case START_MENU -> handleStartMenu(chatId);
-            case FILE_RESPONSE -> {
-                if (args.length >= 2) {
-                    handleFileResponse(chatId, (String) args[0], (Boolean) args[1]);
-                }
-            }
-            case LINK_RESPONSE -> {
-                if (args.length >= 2) {
-                    handleLinkResponse(chatId, (String) args[0], (Boolean) args[1]);
-                }
-            }
-            default -> handleSimpleError(chatId);
+    public void handleTextResponse(long chatId, String data) {
+        if (handleSpecCommand(chatId, data)) return;
+        if (handleBasicCommands(chatId, data)) return;
+
+        // Проверка бана на отправку контента (SHARING_BAN)
+        if (checkBanAndRespond(chatId, BanType.SHARING_BAN)) {
+            return;
         }
+
+        // Обработка ссылок
+        if (LinkUtil.isValidLinkFormat(data.trim())) {
+            if (userController.getCanAddLink(chatId)) {
+                saveLink(chatId, data);
+            } else {
+                handleSimpleError(chatId);
+            }
+        }
+        // Обработка добавления группы
+        else if (userController.getCanAddGroup(chatId)) {
+            saveGroup(chatId, data);
+        }
+        // Обработка добавления папки
+        else if (userController.getCanAddFolder(chatId)) {
+            saveFolder(chatId, data);
+        }
+        // Обработка файлов (если text заканчивается на File или _lnk)
+        else if (data.endsWith("File")) {
+            handleFileResponse(chatId, data);
+        } else if (data.endsWith("_lnk")) {
+            handleLinkResponse(chatId, data);
+        }
+
+    }
+
+    private boolean checkBanAndRespond(long chatId, BanType banType) {
+        if (userBansController.isUserBanned(chatId)) {
+            BanInfo banInfo = userBansController.getUserBanInfo(chatId);
+            if (banInfo != null) {
+                if (banType == BanType.FULL_BAN && banInfo.getBanType().equals(BanType.FULL_BAN.toString())) {
+                    handleFullBan(chatId);
+                    return true;
+                } else if (banType == BanType.SHARING_BAN && banInfo.getBanType().equals(BanType.SHARING_BAN.toString())) {
+                    handleSharingBan(chatId);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean handleBasicCommands(long chatId, String data) {
+        switch (data) {
+            case "DocumentSaved" -> {
+                handleDocumentSaved(chatId);
+                return true;
+            }
+            case "IncorrectFileException" -> {
+                handleIncorrectFileExtension(chatId);
+                return true;
+            }
+            case "FileSizeException" -> {
+                handleFileTooBig(chatId);
+                return true;
+            }
+            case "FolderAdded" -> {
+                handleFolderAdded(chatId);
+                return true;
+            }
+            case "SimpleError" -> {
+                handleSimpleError(chatId);
+                return true;
+            }
+            case "AdminError" -> {
+                handleAdminError(chatId);
+                return true;
+            }
+            case "PathCheckError" -> {
+                handlePathCheckError(chatId);
+                return true;
+            }
+            case "InvalidFileName" -> {
+                handleInvalidFileName(chatId);
+                return true;
+            }
+            case "LinkSaved" -> {
+                handleLinkSaved(chatId);
+                return true;
+            }
+            case "GroupSaved" -> {
+                handleGroupSaved(chatId);
+                return true;
+            }
+            case "TooFewArgs" -> {
+                handleTooFewArgs(chatId);
+                return true;
+            }
+            case "InvalidUserChatId" -> {
+                handleInvalidUserChatId(chatId);
+                return true;
+            }
+            case "FullBan" -> {
+                handleFullBan(chatId);
+                return true;
+            }
+            case "SharingBan" -> {
+                handleSharingBan(chatId);
+                return true;
+            }
+            case "AdminAdded" -> {
+                handleAdminAdded(chatId);
+                return true;
+            }
+            case "StartMenu" -> {
+                handleStartMenu(chatId);
+                return true;
+            }
+            case "FileResponse" -> {
+                handleFileResponse(chatId, data);
+                return true;
+            }
+            case "LinkResponse" -> {
+                handleLinkResponse(chatId, data);
+                return true;
+            }
+            default -> {
+                return false;
+            }
+        }
+    }
+
+    private boolean handleSpecCommand(long chatId, String data) {
+        String[] parts = data.split(" ");
+        String cmd = parts[0];
+        String args = parts.length > 1 ? parts[1] : "";
+
+        switch (cmd) {
+            case "/start" -> {
+                handleStartMenu(chatId);
+                return true;
+            }
+            case "/sendToAll" -> {
+                handleSendToAllUsers(chatId, args);
+                return true;
+            }
+            case "/sendNotification" -> {
+                handleSendNotification(chatId, data);
+                return true;
+            }
+            case "/addAdmin" -> {
+                handleAddAdmin(chatId, args);
+                return true;
+            }
+            case "/deleteFolder" -> {
+                handleDeleteFolder(chatId);
+                return true;
+            }
+            case "/deleteGroup" -> {
+                handleDeleteGroup(chatId);
+                return true;
+            }
+            case "/ban_user" -> {
+                handleBanUser(chatId, args);
+                return true;
+            }
+            case "/unban_user" -> {
+                handleUnbanUser(chatId, args);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void saveLink(long chatId, String text) {
+        String[] parts = text.split(":");
+        if (parts.length >= 2) {
+            String linkName = parts[0].trim();
+            String link = parts[1].trim();
+            String group = userController.getGroupForLinks(chatId);
+            linksAndGroupsController.addLink(linkName, link, group, chatId);
+            handleLinkSaved(chatId);
+        }
+    }
+
+    private void saveGroup(long chatId, String text) {
+        linksAndGroupsController.addNewGroup(chatId, text.trim());
+        handleGroupSaved(chatId);
+    }
+
+    private void saveFolder(long chatId, String text) {
+        if (!org.example.files.FilesController.checkFileName(text)) {
+            handleInvalidFileName(chatId);
+            return;
+        }
+
+        String folderName = text.trim();
+        filesAndFoldersController.addFolder(chatId, folderName);
+        handleFolderAdded(chatId);
     }
 
     // Административные команды
-    public void sendToAllUsers(List<Long> chatIds, String text) {
-        for (long chatId : chatIds) {
-            SendMessage message = createMessageWithMarkup(chatId, text, MarkupKey.MAIN_MENU);
-            executeSafely(message, "/sendToAll", chatId);
+    private void handleSendToAllUsers(long chatId, String text) {
+        if (!userController.checkAdminByChatId(chatId)) {
+            handleAdminError(chatId);
+            return;
         }
+        List<Long> chatIds = userController.getAllUsersChatId();
+        sendToAllUsers(chatIds, text);
+
+        SendMessage message = createMessageWithMarkup(chatId, "Сообщения отправлены", MarkupKey.MAIN_MENU);
+        executeSafely(message, "SendToAllUsers", chatId);
     }
 
-    public void handleAdminCommand(long chatId, AdminCommand command, String... args) {
+    private void handleSendNotification(long chatId, String text) {
         if (!userController.checkAdminByChatId(chatId)) {
             handleAdminError(chatId);
             return;
         }
 
-        switch (command) {
-            case SEND_TO_ALL -> {
-                if (args.length > 0) {
-                    List<Long> chatIds = userController.getAllUsersChatId();
-                    sendToAllUsers(chatIds, args[0]);
-                }
+        SendMessage message;
+        if (!text.isEmpty()) {
+            text = text.replaceAll("/sendNotification", "").trim();
+            bot.notification.setLength(0);
+            bot.notification.append(text);
+            message = createMessageWithMarkup(chatId, "Оповещение изменено", MarkupKey.MAIN_MENU);
+            executeSafely(message, "SendNotification", chatId);
+        } else {
+            message = createMessageWithMarkup(chatId, "Текст оповещения не должен быть пустым", MarkupKey.MAIN_MENU);
+            executeSafely(message, "AddAdmin", chatId);
+        }
+    }
+
+    private void handleAddAdmin(long chatId, String username) {
+        boolean isMainAdmin = userController.checkAdminByChatId(chatId) &&
+                userController.getAdminRole(chatId).equals(AdminRole.Main.toString());
+
+        if (!isMainAdmin) {
+            handleAdminError(chatId);
+            return;
+        }
+
+        SendMessage message;
+        String adminUsername = username.trim();
+        if (!adminUsername.isEmpty()) {
+            userController.addBaseAdmin(adminUsername);
+            message = createMessageWithMarkup(chatId, "Админ добавлен", MarkupKey.MAIN_MENU);
+            executeSafely(message, "AddAdmin", chatId);
+        } else {
+            message = createMessageWithMarkup(chatId, "Username не должен быть пустым", MarkupKey.MAIN_MENU);
+            executeSafely(message, "AddAdmin", chatId);
+        }
+    }
+
+    private void sendToAllUsers(List<Long> chatIds, String text) {
+        for (long chatId : chatIds) {
+            SendMessage message = createMessageWithMarkup(chatId, text, MarkupKey.NONE);
+            executeSafely(message, "/sendToAll", chatId);
+        }
+    }
+
+    private void handleDeleteFolder(long chatId) {
+        if (!userController.checkAdminByChatId(chatId)) {
+            handleAdminError(chatId);
+            return;
+        }
+
+        SendMessage message = createMessageWithChangeableMarkup(chatId,
+                "Выберите папку, которую хотите удалить вместе с файлами внутри",
+                "/delete_Folder");
+        executeSafely(message, "/delete_Folder", chatId);
+    }
+
+    private void handleDeleteGroup(long chatId) {
+        if (! userController.checkAdminByChatId(chatId)) {
+            handleAdminError(chatId);
+            return;
+        }
+
+        SendMessage message = createMessageWithChangeableMarkup(chatId, "Выберите группу, которую хотите удалить вместе с содержимым", "/delete_Group");
+        executeSafely(message, "/delete_Group", chatId);
+    }
+
+    private void handleBanUser(long chatId, String data) {
+        if (!userController.checkAdminByChatId(chatId)) {
+            handleAdminError(chatId);
+            return;
+        }
+
+        String[] parts = data.split(" ");
+        if (parts.length < 3) {
+            handleTooFewArgs(chatId);
+            return;
+        }
+
+        try {
+            long userChatId = Long.parseLong(parts[0]);
+            if (userChatId == chatId) {
+                handleInvalidUserChatId(chatId);
+                return;
             }
-            case DELETE_FOLDER -> {
-                SendMessage message = createMessageWithChangeableMarkup(chatId,
-                        "Выберите папку, которую хотите удалить вместе с файлами внутри",
-                        "/delete_Folder");
-                executeSafely(message, "/delete_Folder", chatId);
-            }
-            case DELETE_GROUP -> {
-                SendMessage message = createMessageWithChangeableMarkup(chatId,
-                        "Выберите группу, которую хотите удалить",
-                        "/delete_Group");
-                executeSafely(message, "/delete_Group", chatId);
-            }
-            case ADD_ADMIN -> {
-                if (args.length > 0 && userController.addBaseAdmin(args[0])) {
-                    handleAdminAdded(chatId);
-                }
-            }
+
+            BanInfo banInfo = createBanInfo(parts, chatId);
+            userBansController.banUser(userChatId, banInfo);
+            handleStartMenu(chatId);
+
+        } catch (NumberFormatException e) {
+            handleInvalidUserChatId(chatId);
+        }
+    }
+
+    private BanInfo createBanInfo(String[] args, long adminChatId) {
+        String banType = args[1];
+        if (!banType.equals(BanType.FULL_BAN.toString()) &&
+                !banType.equals(BanType.SHARING_BAN.toString())) {
+            banType = BanType.SHARING_BAN.toString();
+        }
+
+        StringBuilder reason = new StringBuilder();
+        for (int i = 2; i < args.length; i++) {
+            reason.append(args[i]).append(" ");
+        }
+
+        return BanInfo.builder()
+                .banType(banType)
+                .reason(reason.toString().trim())
+                .adminChatId(adminChatId)
+                .build();
+    }
+
+    private void handleUnbanUser(long chatId, String args) {
+        if (!userController.checkAdminByChatId(chatId)) {
+            handleAdminError(chatId);
+            return;
+        }
+
+        String[] parts = args.split(" ");
+        if (parts.length < 1) {
+            handleTooFewArgs(chatId);
+            return;
+        }
+
+        try {
+            long userChatId = Long.parseLong(parts[0]);
+            userBansController.unbanUser(userChatId, chatId);
+            handleStartMenu(chatId);
+        } catch (NumberFormatException e) {
+            handleInvalidUserChatId(chatId);
         }
     }
 
@@ -213,13 +481,15 @@ public class TextResponseHandler {
         executeSafely(message, "InvalidUserChatId", chatId);
     }
 
-    private void handleFullBan(long chatId, BanInfo banInfo) {
+    private void handleFullBan(long chatId) {
+        BanInfo banInfo = userBansController.getUserBanInfo(chatId);
         String text = "Вы заблокированы, причина : \n" + banInfo.getReason();
         SendMessage message = createMessageWithMarkup(chatId, text, MarkupKey.NONE);
         executeSafely(message, "FullBan", chatId);
     }
 
-    private void handleSharingBan(long chatId, BanInfo banInfo) {
+    private void handleSharingBan(long chatId) {
+        BanInfo banInfo = userBansController.getUserBanInfo(chatId);
         String text = "Вы не можете сохранять папки и ссылки, причина : \n" + banInfo.getReason();
         SendMessage message = createMessageWithMarkup(chatId, text, MarkupKey.MAIN_MENU);
         executeSafely(message, "SharingBan", chatId);
@@ -230,13 +500,13 @@ public class TextResponseHandler {
         executeSafely(message, "/start", chatId);
     }
 
-    private void handleFileResponse(long chatId, String data, boolean isAdmin) {
+    private void handleFileResponse(long chatId, String data) {
         long fileId = Long.parseLong(data.replaceAll("File$", ""));
         FileDTO fileDTO = filesAndFoldersController.getFileInfoByFileId(fileId);
         MessageWithDocBuilder message = new MessageWithDocBuilder(chatId, fileDTO);
         SendDocument sendDocument = message.getMessage();
 
-        if (isAdmin) {
+        if (userController.checkAdminByChatId(chatId)) {
             long userChatId = filesAndFoldersController.getFilesChatIdById(fileId);
             sendDocument.setCaption(userController.getUserInfo(userChatId));
         }
@@ -252,12 +522,13 @@ public class TextResponseHandler {
         }
     }
 
-    private void handleLinkResponse(long chatId, String data, boolean isAdmin) {
-        long linkId = Long.parseLong(data.replaceAll("_lnk$", ""));
+    private void handleLinkResponse(long chatId, String data) {
+        // Удаление всех не цифровых символов в строке
+        long linkId = Long.parseLong(data.replaceAll("[^0-9]+$", ""));
         String link = linksAndGroupsController.getLinkById(linkId);
         String messageText;
 
-        if (isAdmin) {
+        if (userController.checkAdminByChatId(chatId)) {
             long userChatId = linksAndGroupsController.getUsersChatIdByLinkId(linkId);
             messageText = "Вот ваша ссылка \n" + link + "\n" + userController.getUserInfo(userChatId);
         } else {
@@ -278,35 +549,5 @@ public class TextResponseHandler {
             System.err.printf("Error (TextResponseHandler - data: %s, chatId: %d): %s%n",
                     data, chatId, e.getMessage());
         }
-    }
-
-    // Enum для типов ответов
-    public enum ResponseType {
-        DOCUMENT_SAVED,
-        INCORRECT_FILE_EXTENSION,
-        FILE_TOO_BIG,
-        FOLDER_ADDED,
-        SIMPLE_ERROR,
-        ADMIN_ERROR,
-        PATH_CHECK_ERROR,
-        INVALID_FILE_NAME,
-        LINK_SAVED,
-        GROUP_SAVED,
-        TOO_FEW_ARGS,
-        INVALID_USER_CHAT_ID,
-        FULL_BAN,
-        SHARING_BAN,
-        ADMIN_ADDED,
-        START_MENU,
-        FILE_RESPONSE,
-        LINK_RESPONSE
-    }
-
-    // Enum для административных команд
-    public enum AdminCommand {
-        SEND_TO_ALL,
-        DELETE_FOLDER,
-        DELETE_GROUP,
-        ADD_ADMIN
     }
 }

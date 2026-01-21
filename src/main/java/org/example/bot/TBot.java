@@ -44,7 +44,7 @@ public class TBot extends TelegramLongPollingBot {
     private FilesAndFoldersController filesAndFoldersController;
     private LinksAndGroupsController linksAndGroupsController;
 
-    private final StringBuilder notification = new StringBuilder("Нет каких либо оповещений");
+    public final StringBuilder notification = new StringBuilder("Нет каких либо оповещений");
 
     public TBot() {
         loadConfig();
@@ -87,7 +87,7 @@ public class TBot extends TelegramLongPollingBot {
         // Инициализация обработчиков ответов
         textResponseHandler = new TextResponseHandler(
                 this, markupSetter, filesAndFoldersController,
-                linksAndGroupsController, userController
+                linksAndGroupsController, userController, userBansController
         );
 
         callbackResponseHandler = new CallbackResponseHandler(
@@ -176,7 +176,7 @@ public class TBot extends TelegramLongPollingBot {
         // Проверка выбранного пути
         String userPath = userController.getFilePath(chatId);
         if (userPath.isEmpty()) {
-            textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.PATH_CHECK_ERROR);
+            textResponseHandler.handleTextResponse(chatId, "PathCheckError");
             return;
         }
 
@@ -186,17 +186,17 @@ public class TBot extends TelegramLongPollingBot {
         try {
             saveDocument(update, fileName, userPath, chatId);
         } catch (IncorrectExtensionException e) {
-            logError("IncorrectExtensionException", chatId, e);
-            textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.INCORRECT_FILE_EXTENSION);
+            logError("IncorrectFileException", chatId, e);
+            textResponseHandler.handleTextResponse(chatId, "IncorrectFileException");
         } catch (FileSizeException e) {
             logError("FileSizeException", chatId, e);
-            textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.FILE_TOO_BIG);
+            textResponseHandler.handleTextResponse(chatId, "FileSizeException");
         } catch (TelegramApiException | IOException e) {
             logError("TelegramApi/IOException", chatId, e);
-            textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.SIMPLE_ERROR);
+            textResponseHandler.handleTextResponse(chatId, "SimpleError");
         } catch (InvalidCallbackDataException e) {
             logError("InvalidCallbackDataException", chatId, e);
-            textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.INVALID_FILE_NAME);
+            textResponseHandler.handleTextResponse(chatId, "InvalidFileName");
         }
     }
 
@@ -205,6 +205,8 @@ public class TBot extends TelegramLongPollingBot {
 
         // Проверка бана (полный бан)
         if (checkBanAndRespond(chatId, BanType.FULL_BAN)) {
+            BanInfo banInfo = userBansController.getUserBanInfo(chatId);
+            textResponseHandler.handleTextResponse(chatId, "FullBan");
             return;
         }
 
@@ -214,11 +216,7 @@ public class TBot extends TelegramLongPollingBot {
         logMessage(chatId, text);
 
         // Обработка команд
-        if (text.startsWith("/")) {
-            handleCommand(chatId, text);
-        } else {
-            handleRegularText(chatId, text);
-        }
+        textResponseHandler.handleTextResponse(chatId, text);
     }
 
     private boolean checkBanAndRespond(long chatId, BanType banType) {
@@ -226,249 +224,15 @@ public class TBot extends TelegramLongPollingBot {
             BanInfo banInfo = userBansController.getUserBanInfo(chatId);
             if (banInfo != null) {
                 if (banType == BanType.FULL_BAN && banInfo.getBanType().equals(BanType.FULL_BAN.toString())) {
-                    textResponseHandler.sendResponse(chatId,
-                            TextResponseHandler.ResponseType.FULL_BAN, banInfo);
+                    textResponseHandler.handleTextResponse(chatId, "FullBan");
                     return true;
                 } else if (banType == BanType.SHARING_BAN && banInfo.getBanType().equals(BanType.SHARING_BAN.toString())) {
-                    textResponseHandler.sendResponse(chatId,
-                            TextResponseHandler.ResponseType.SHARING_BAN, banInfo);
+                    textResponseHandler.handleTextResponse(chatId, "SharingBan");
                     return true;
                 }
             }
         }
         return false;
-    }
-
-    private void handleCommand(long chatId, String command) {
-        String[] parts = command.split(" ", 2);
-        String cmd = parts[0];
-        String args = parts.length > 1 ? parts[1] : "";
-
-        switch (cmd) {
-            case "/start" -> textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.START_MENU);
-            case "/help" -> sendHelpResponse(chatId);
-            case "/sendToAll" -> handleSendToAll(chatId, args);
-            case "/sendNotification" -> handleSendNotification(chatId, args);
-            case "/addAdmin" -> handleAddAdmin(chatId, args);
-            case "/delete_Folder" -> handleDeleteFolder(chatId);
-            case "/delete_Group" -> handleDeleteGroup(chatId);
-            case "/ban_user" -> handleBanUser(chatId, args);
-            case "/unban_user" -> handleUnbanUser(chatId, args);
-            default -> textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.SIMPLE_ERROR);
-        }
-    }
-
-    private void handleRegularText(long chatId, String text) {
-        // Проверка бана на отправку контента (SHARING_BAN)
-        if (checkBanAndRespond(chatId, BanType.SHARING_BAN)) {
-            return;
-        }
-
-        // Обработка ссылок
-        if (LinkUtil.isValidLinkFormat(text.trim())) {
-            if (userController.getCanAddLink(chatId)) {
-                saveLink(chatId, text);
-            } else {
-                textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.SIMPLE_ERROR);
-            }
-        }
-        // Обработка добавления группы
-        else if (userController.getCanAddGroup(chatId)) {
-            saveGroup(chatId, text);
-        }
-        // Обработка добавления папки
-        else if (userController.getCanAddFolder(chatId)) {
-            saveFolder(chatId, text);
-        }
-        // Обработка файлов (если text заканчивается на File или _lnk)
-        else if (text.endsWith("File")) {
-            boolean isAdmin = userController.checkAdminByChatId(chatId);
-            textResponseHandler.sendResponse(chatId,
-                    TextResponseHandler.ResponseType.FILE_RESPONSE, text, isAdmin);
-        } else if (text.endsWith("_lnk")) {
-            boolean isAdmin = userController.checkAdminByChatId(chatId);
-            textResponseHandler.sendResponse(chatId,
-                    TextResponseHandler.ResponseType.LINK_RESPONSE, text, isAdmin);
-        }
-    }
-
-    private void sendHelpResponse(long chatId) {
-        boolean isAdmin = userController.checkAdminByChatId(chatId);
-        String adminHelp = """
-                Команды :
-                /sendToAll text - Отправляет всем пользователям бота сообщение с указанным текстом
-                /sendNotification text - Устанавливает текст при нажатии кнопки
-                /addAdmin username - Добавляет нового админа с базовыми правами
-                /delete_Folder - позволяет удалить папку с файлами
-                /delete_Group - позволяет удалить группу с ссылками
-                /ban_user chatId banType(FULL_BAN | SHARING_BAN) причина - блокирует пользователя
-                /unban_user chatId - снять бан с пользователя
-                """;
-        String userHelp = "Напишите /start, если что-то сломалось \n" +
-                "Чтобы сохранить файл, выберите путь и скиньте файл боту\n" +
-                "Старайтесь не делать названия файлов и директории слишком большими, бот может дать сбой \n" +
-                "Если столкнулись с проблемой, напишите в личку @wrotoftanks63";
-
-        String helpText = isAdmin ? adminHelp : userHelp;
-        SendMessage message = textResponseHandler.createMessageWithMarkup(chatId, helpText, MarkupKey.MAIN_MENU);
-        executeSafely(message, "/help", chatId);
-    }
-
-    private void handleSendToAll(long chatId, String text) {
-        if (!userController.checkAdminByChatId(chatId)) {
-            textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.ADMIN_ERROR);
-            return;
-        }
-
-        if (!text.isEmpty()) {
-            List<Long> chatIds = userController.getAllUsersChatId();
-            textResponseHandler.sendToAllUsers(chatIds, text);
-        }
-    }
-
-    private void handleSendNotification(long chatId, String text) {
-        if (!userController.checkAdminByChatId(chatId)) {
-            textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.ADMIN_ERROR);
-            return;
-        }
-
-        if (!text.isEmpty()) {
-            notification.setLength(0);
-            notification.append(text);
-            textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.SIMPLE_ERROR);
-        }
-    }
-
-    private void handleAddAdmin(long chatId, String username) {
-        boolean isMainAdmin = userController.checkAdminByChatId(chatId) &&
-                userController.getAdminRole(chatId).equals(AdminRole.Main.toString());
-
-        if (!isMainAdmin) {
-            textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.ADMIN_ERROR);
-            return;
-        }
-
-        String adminUsername = username.trim();
-        if (!adminUsername.isEmpty()) {
-            textResponseHandler.handleAdminCommand(chatId,
-                    TextResponseHandler.AdminCommand.ADD_ADMIN, adminUsername);
-        }
-    }
-
-    private void handleDeleteFolder(long chatId) {
-        if (!userController.checkAdminByChatId(chatId)) {
-            textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.ADMIN_ERROR);
-            return;
-        }
-
-        textResponseHandler.handleAdminCommand(chatId,
-                TextResponseHandler.AdminCommand.DELETE_FOLDER);
-    }
-
-    private void handleDeleteGroup(long chatId) {
-        if (!userController.checkAdminByChatId(chatId)) {
-            textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.ADMIN_ERROR);
-            return;
-        }
-
-        textResponseHandler.handleAdminCommand(chatId,
-                TextResponseHandler.AdminCommand.DELETE_GROUP);
-    }
-
-    private void handleBanUser(long chatId, String args) {
-        if (!userController.checkAdminByChatId(chatId)) {
-            textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.ADMIN_ERROR);
-            return;
-        }
-
-        String[] parts = args.split(" ");
-        if (parts.length < 3) {
-            textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.TOO_FEW_ARGS);
-            return;
-        }
-
-        try {
-            long userChatId = Long.parseLong(parts[0]);
-            if (userChatId == chatId) {
-                textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.INVALID_USER_CHAT_ID);
-                return;
-            }
-
-            BanInfo banInfo = createBanInfo(parts, chatId);
-            userBansController.banUser(userChatId, banInfo);
-            textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.SIMPLE_ERROR);
-
-        } catch (NumberFormatException e) {
-            textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.INVALID_USER_CHAT_ID);
-        }
-    }
-
-    private void handleUnbanUser(long chatId, String args) {
-        if (!userController.checkAdminByChatId(chatId)) {
-            textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.ADMIN_ERROR);
-            return;
-        }
-
-        String[] parts = args.split(" ");
-        if (parts.length < 1) {
-            textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.TOO_FEW_ARGS);
-            return;
-        }
-
-        try {
-            long userChatId = Long.parseLong(parts[0]);
-            userBansController.unbanUser(userChatId, chatId);
-            textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.SIMPLE_ERROR);
-
-        } catch (NumberFormatException e) {
-            textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.INVALID_USER_CHAT_ID);
-        }
-    }
-
-    private BanInfo createBanInfo(String[] args, long adminChatId) {
-        String banType = args[1];
-        if (!banType.equals(BanType.FULL_BAN.toString()) &&
-                !banType.equals(BanType.SHARING_BAN.toString())) {
-            banType = BanType.SHARING_BAN.toString();
-        }
-
-        StringBuilder reason = new StringBuilder();
-        for (int i = 2; i < args.length; i++) {
-            reason.append(args[i]).append(" ");
-        }
-
-        return BanInfo.builder()
-                .banType(banType)
-                .reason(reason.toString().trim())
-                .adminChatId(adminChatId)
-                .build();
-    }
-
-    private void saveLink(long chatId, String text) {
-        String[] parts = text.split(":");
-        if (parts.length >= 2) {
-            String linkName = parts[0].trim();
-            String link = parts[1].trim();
-            String group = userController.getGroupForLinks(chatId);
-            linksAndGroupsController.addLink(linkName, link, group, chatId);
-            textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.LINK_SAVED);
-        }
-    }
-
-    private void saveGroup(long chatId, String text) {
-        linksAndGroupsController.addNewGroup(chatId, text.trim());
-        textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.GROUP_SAVED);
-    }
-
-    private void saveFolder(long chatId, String text) {
-        if (!org.example.files.FilesController.checkFileName(text)) {
-            textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.INVALID_FILE_NAME);
-            return;
-        }
-
-        String folderName = text.trim();
-        filesController.addFolder(chatId, folderName);
-        textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.FOLDER_ADDED);
     }
 
     private void saveDocument(Update update, String fileName, String userPath, long chatId)
@@ -493,18 +257,9 @@ public class TBot extends TelegramLongPollingBot {
             System.out.printf("Сохранен документ от пользователя %d%nДокумент: %s/%s%n",
                     chatId, folder, document.getFileName());
 
-            textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.DOCUMENT_SAVED);
+            textResponseHandler.handleTextResponse(chatId, "DocumentSaved");
         } else {
-            textResponseHandler.sendResponse(chatId, TextResponseHandler.ResponseType.SIMPLE_ERROR);
-        }
-    }
-
-    private void executeSafely(SendMessage message, String context, long chatId) {
-        try {
-            execute(message);
-        } catch (TelegramApiException e) {
-            System.err.printf("Error (TBot - context: %s, chatId: %d): %s%n",
-                    context, chatId, e.getMessage());
+            textResponseHandler.handleTextResponse(chatId, "SimpleError");
         }
     }
 

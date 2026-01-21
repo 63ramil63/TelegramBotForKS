@@ -67,7 +67,7 @@ public class CallbackResponseHandler {
         } else if (callbackData.contains("DeleteFileButton") || callbackData.contains("FilesDelAdm")) {
             handleFileDeletionMenu(chatId, callbackData, messageId);
         } else if (callbackData.endsWith("File")) {
-            deleteMessageAndSendFile(chatId, callbackData, messageId, isAdmin, textHandler);
+            deleteMessageAndSendFile(chatId, callbackData, messageId, textHandler);
         } else if (callbackData.endsWith("_FDel")) {
             handleFileDeletion(chatId, callbackData, messageId);
         } else if (callbackData.endsWith("_LDel")) {
@@ -85,7 +85,7 @@ public class CallbackResponseHandler {
         } else if (callbackData.endsWith("AddLinkButton")) {
             handleAddLinkButton(chatId, callbackData, messageId);
         } else if (callbackData.endsWith("_lnk")) {
-            deleteMessageAndSendLink(chatId, callbackData, messageId, isAdmin, textHandler);
+            deleteMessageAndSendLink(chatId, callbackData, messageId, textHandler);
         } else if (callbackData.contains("Year")) {
             handleGroupSelectionFromYearList(chatId, callbackData, messageId);
         } else if (callbackData.contains("Group")) {
@@ -387,9 +387,9 @@ public class CallbackResponseHandler {
     }
 
     private void deleteMessageAndSendFile(long chatId, String data, int messageId,
-                                          boolean isAdmin, TextResponseHandler textHandler) {
+                                          TextResponseHandler textHandler) {
         deleteMessage(chatId, messageId);
-        textHandler.sendResponse(chatId, TextResponseHandler.ResponseType.FILE_RESPONSE, data, isAdmin);
+        textHandler.handleTextResponse(chatId, data);
     }
 
     private void handleFileDeletion(long chatId, String data, int messageId) {
@@ -514,9 +514,9 @@ public class CallbackResponseHandler {
     }
 
     private void deleteMessageAndSendLink(long chatId, String data, int messageId,
-                                          boolean isAdmin, TextResponseHandler textHandler) {
+                                          TextResponseHandler textHandler) {
         deleteMessage(chatId, messageId);
-        textHandler.sendResponse(chatId, TextResponseHandler.ResponseType.LINK_RESPONSE, data, isAdmin);
+        textHandler.handleTextResponse(chatId, data + "_lnk");
     }
 
     private void handleYearSelection(long chatId, String data, int messageId) {
