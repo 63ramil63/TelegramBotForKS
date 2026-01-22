@@ -8,6 +8,7 @@ import org.example.dto.FileDTO;
 import org.example.files.exception.FileSizeException;
 import org.example.files.exception.IncorrectExtensionException;
 import org.example.files.exception.InvalidCallbackDataException;
+import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.objects.Document;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
@@ -149,7 +150,7 @@ public class FilesController {
 
         String fileId = document.getFileId();
 
-        String filePath = tBot.getFilePath(fileId);
+        String filePath = tBot.execute(new GetFile(fileId)).getFilePath();
         InputStream is = new URL("https://api.telegram.org/file/bot" + bot_token + "/" + filePath).openStream();
         String path;
         if (caption != null && !caption.isEmpty()) {

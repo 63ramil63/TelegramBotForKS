@@ -282,9 +282,4 @@ public class TBot extends TelegramLongPollingBot {
     public String getBotToken() {
         return BotConfig.getBotToken();
     }
-
-    // Метод для FilesController
-    public String getFilePath(String fileId) throws TelegramApiException {
-        return execute(new GetFile(fileId)).getFilePath();
-    }
 }
