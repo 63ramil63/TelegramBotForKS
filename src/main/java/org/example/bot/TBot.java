@@ -205,7 +205,6 @@ public class TBot extends TelegramLongPollingBot {
 
         // Проверка бана (полный бан)
         if (checkBanAndRespond(chatId, BanType.FULL_BAN)) {
-            BanInfo banInfo = userBansController.getUserBanInfo(chatId);
             textResponseHandler.handleTextResponse(chatId, "FullBan");
             return;
         }
