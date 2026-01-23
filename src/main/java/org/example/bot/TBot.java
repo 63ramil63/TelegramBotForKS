@@ -6,6 +6,7 @@ import org.example.bot.config.BotConfig;
 import org.example.bot.message.markup.MarkupKey;
 import org.example.bot.message.markup.MarkupSetter;
 import org.example.bot.response.CallbackResponseHandler;
+import org.example.bot.response.DocumentResponseHandler;
 import org.example.bot.response.TextResponseHandler;
 import org.example.controller.FilesAndFoldersController;
 import org.example.controller.LinksAndGroupsController;
@@ -43,6 +44,7 @@ public class TBot extends TelegramLongPollingBot {
     private MarkupSetter markupSetter;
     private FilesAndFoldersController filesAndFoldersController;
     private LinksAndGroupsController linksAndGroupsController;
+    private DocumentResponseHandler documentResponseHandler;
 
     public final StringBuilder notification = new StringBuilder("Нет каких либо оповещений");
 
@@ -94,6 +96,11 @@ public class TBot extends TelegramLongPollingBot {
                 this, markupSetter, filesAndFoldersController,
                 linksAndGroupsController, userController, userBansController,
                 filesController, deletionLogRepository
+        );
+
+        documentResponseHandler = new DocumentResponseHandler(
+                this, textResponseHandler, filesController,
+                filesAndFoldersController
         );
 
         // Настройка админов
@@ -183,21 +190,7 @@ public class TBot extends TelegramLongPollingBot {
         userPath = BotConfig.getFileStoragePath() + userPath;
         String fileName = update.getMessage().getDocument().getFileName();
 
-        try {
-            saveDocument(update, fileName, userPath, chatId);
-        } catch (IncorrectExtensionException e) {
-            logError("IncorrectFileException", chatId, e);
-            textResponseHandler.handleTextResponse(chatId, "IncorrectFileException");
-        } catch (FileSizeException e) {
-            logError("FileSizeException", chatId, e);
-            textResponseHandler.handleTextResponse(chatId, "FileSizeException");
-        } catch (TelegramApiException | IOException e) {
-            logError("TelegramApi/IOException", chatId, e);
-            textResponseHandler.handleTextResponse(chatId, "SimpleError");
-        } catch (InvalidCallbackDataException e) {
-            logError("InvalidCallbackDataException", chatId, e);
-            textResponseHandler.handleTextResponse(chatId, "InvalidFileName");
-        }
+        documentResponseHandler.handleDocument(update, fileName, userPath, chatId);
     }
 
     private void handleTextMessage(Update update) {
@@ -234,40 +227,12 @@ public class TBot extends TelegramLongPollingBot {
         return false;
     }
 
-    private void saveDocument(Update update, String fileName, String userPath, long chatId)
-            throws IncorrectExtensionException, IOException, FileSizeException,
-            TelegramApiException, InvalidCallbackDataException {
-
-        String extension = org.example.files.FilesController.checkFileExtension(
-                fileName, BotConfig.getAllowedExtensions());
-
-        Document document = update.getMessage().getDocument();
-        String caption = update.getMessage().getCaption();
-
-        String pathToFile = filesController.saveDocument(document, caption, extension, userPath);
-
-        if (!pathToFile.isEmpty()) {
-            String target = pathToFile.replace(BotConfig.getFileStoragePath(), "");
-            int delimiterIndex = target.indexOf(BotConfig.getFileDelimiter());
-            String folder = target.substring(0, delimiterIndex);
-            String file = target.substring(delimiterIndex + 1);
-
-            filesAndFoldersController.putFileInfo(chatId, folder, file);
-            System.out.printf("Сохранен документ от пользователя %d%nДокумент: %s/%s%n",
-                    chatId, folder, document.getFileName());
-
-            textResponseHandler.handleTextResponse(chatId, "DocumentSaved");
-        } else {
-            textResponseHandler.handleTextResponse(chatId, "SimpleError");
-        }
-    }
-
-    private void logMessage(long chatId, String text) {
+    public void logMessage(long chatId, String text) {
         System.out.printf("Message (chatId: %d | text: %s) %tF %<tT%n",
                 chatId, text, LocalDateTime.now());
     }
 
-    private void logError(String errorType, long chatId, Exception e) {
+    public void logError(String errorType, long chatId, Exception e) {
         System.err.printf("Error (TBot - %s, chatId: %d): %s%n",
                 errorType, chatId, e.getMessage());
     }
