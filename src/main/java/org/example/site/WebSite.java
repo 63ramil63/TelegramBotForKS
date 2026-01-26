@@ -9,145 +9,215 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class WebSite {
-    public final String scheduleUrl = "https://lk.ks.psuti.ru/?mn=2&obj=";
-    public final String yearsAndGroupsUrl = "https://lk.ks.psuti.ru/?mn=2";
+    private static final String BASE_URL = "https://lk.ks.psuti.ru/?mn=2";
+    private static final String SCHEDULE_URL = BASE_URL + "&obj=";
+    private static final String USER_AGENT = "Chrome";
+    private static final int TIMEOUT_MS = 10_000;
+    private static final int MAX_YEARS = 10;
+    private static final int MAX_ROWS = 60;
+
+    private static final int YEAR_ROW_INDEX = 6;
+    private static final int GROUP_ROW_INDEX = 7;
+    private static final int NEXT_WEEK_ROW_INDEX = 4;
+    private static final int NEXT_WEEK_COL_INDEX = 8;
+
+    private static final String YEAR_PREFIX = "Year";
+    private static final String GROUP_PREFIX = "Group";
 
     public List<String> getYears() {
         try {
-            Document document = Jsoup.connect(yearsAndGroupsUrl).userAgent("Chrome").timeout(10_000).get();
-            List<String> years = new ArrayList<>();
-            int i = 1;
-            while (i != 11) {
-                String year = document.select("body > table:nth-child(5) > tbody > tr:nth-child(6) > td:nth-child(" + i + ")").text();
-                if (!year.isEmpty()) {
-                    years.add(year + "Year" + i);
-                }
-                i++;
-            }
-            return years;
+            Document document = fetchDocument(BASE_URL);
+            return extractYears(document);
         } catch (IOException e) {
-            System.err.println("Error: WebSiteClass (method getYear()) " + e);
+            handleError("getYears", e);
+            return null;
         }
-        return null;
     }
 
-    private void getGroupsElement(Elements elements, List<String> groups, int i) {
-        Elements element = elements.select("tr:nth-child(" + i + ")");
-        // Получаем строку в столбце
-        Elements groupId = element.select("td > a");
-        // Получаем <a> c атрибутом href
-        String attribute = groupId.attr("href");
-        // Удаляем ненужное и оставляем только obj
-        int index = attribute.indexOf("obj");
-        attribute = attribute.substring(index);
-        attribute = attribute.replace("obj", "");
-        groups.add(element.text() + "Group" + attribute);
-    }
-
-    public List<String> getGroups(int num) {
+    public List<String> getGroups(int yearColumn) {
         try {
-            Document document = Jsoup.connect(yearsAndGroupsUrl).userAgent("Chrome").timeout(10_000).get();
-            List<String> groups = new ArrayList<>();
-            Elements elementsSize = document.select("body > table:nth-child(5) > tbody > tr:nth-child(7) > td:nth-child(" + num + ") > table > tbody > tr:nth-child(1) > td > table > tbody > tr");
-            for (int i = 1; i < elementsSize.size() + 1; i++) {
-                getGroupsElement(elementsSize, groups, i);
-            }
-            return groups;
+            Document document = fetchDocument(BASE_URL);
+            return extractGroups(document, yearColumn);
         } catch (IOException e) {
-            System.err.printf("Error WebSiteClass (method getGroups(num : %d))%n%s%n", num, e);
+            handleError("getGroups", e);
+            return null;
         }
-        return null;
-    }
-
-    private String getNextWeek(Document document) {
-        // Получаем неделю из страницы
-        Elements element = document.select("body > table:nth-child(4) > tbody > tr:nth-child(4) > td > table > tbody > tr > td:nth-child(8) > a");
-        String week = element.attr("href");
-        int index = week.indexOf("wk");
-        // Удаление ненужного 'wk'
-        week = week.substring(index);
-        return week;
-    }
-
-    private String getNormalizedSchedule(Elements schedule) {
-        return schedule.text().replace("Кабинет:", "\nКабинет:").replace("дистанционно", "(дистант)");
-    }
-
-    private String getScheduleInfo(int num, Document document) {
-        Elements number = document.select("body > table:nth-child(5) > tbody > tr:nth-child(" + num + ") > td:nth-child(1)");
-        Elements time = document.select("body > table:nth-child(5) > tbody > tr:nth-child(" + num + ") > td:nth-child(2)");
-        Elements rawSchedule = document.select("body > table:nth-child(5) > tbody > tr:nth-child(" + num + ") > td:nth-child(4)");
-        String normalizedSchedule = getNormalizedSchedule(rawSchedule);
-        return "\n" + number.text() + ") " + time.text() + "\n" + normalizedSchedule;
-    }
-
-    private String parseSchedule(int num, Document document) {
-        // пропуск ненужного поля
-        num++;
-        Elements currentElement = document.select("body > table:nth-child(5) > tbody > tr:nth-child(" + num + ")");
-        StringBuilder schedule = new StringBuilder();
-
-        //проверка на последний элемент расписания на день, который всегда пустой
-        while (!currentElement.text().isEmpty()) {
-
-            schedule.append("\n").append(getScheduleInfo(num, document));
-            num++;
-            currentElement = document.select("body > table:nth-child(5) > tbody > tr:nth-child(" + num + ")");
-
-        }
-        //переводим StringBuilder в String
-        String schedules = schedule.toString();
-        //удаление всех пробелов в конце строки, убираем лишний '(', убираем наименование места
-        schedules = schedules.replaceAll("\\s+$", "");
-
-        schedules = schedules.replaceAll("Московское шоссе, 120", "");
-        schedules = schedules.replaceAll(" Замена Свободное время на:", "");
-        return schedules;
-    }
-
-    private boolean isEquals(String day, int num, Document document) {
-        // Проверка на совпадение с заданной датой
-        Elements element = document.select("body > table:nth-child(5) > tbody > tr:nth-child(" + num + ")");
-        return element.text().contains(day);
-    }
-
-    private String findCurrentDay(String day, Document document) {
-        int num = 1;
-        // Перебор эл страницы на поиск нужного дня
-        while (num < 60) {
-            // Проверка даты
-            if (isEquals(day, num, document)) {
-                num++;
-                return day + parseSchedule(num, document);
-            }
-            num++;
-        }
-        return "Not found";
     }
 
     public String getSchedule(String day, String groupId) {
         try {
-            Document document = Jsoup.connect(scheduleUrl + groupId).userAgent("Chrome").timeout(10_000).get();
+            String schedule = findScheduleForCurrentWeek(day, groupId);
 
-            // Получение расписание на эту неделю
-            String schedule = findCurrentDay(day, document);
             if (!schedule.equals("Not found")) {
                 return schedule;
             }
 
-            // Получение след недели
-            String week = getNextWeek(document);
-            document = Jsoup.connect(scheduleUrl + groupId + "&" + week).get();
+            schedule = findScheduleForNextWeek(day, groupId);
 
-            // Расписание на след неделю
-            schedule = findCurrentDay(day, document);
             if (!schedule.equals("Not found")) {
                 return schedule;
             }
-            return "Нет расписания на нужную дату \n https://lk.ks.psuti.ru/?mn=2&obj=" + groupId;
+
+            return createNoScheduleMessage(groupId);
         } catch (IOException e) {
-            System.err.printf("Error WebSiteClass (method getSchedule(day : %s, groupId : %s))%n%s%n", day, groupId, e);
+            handleError("getSchedule", e);
+            return "Not found";
+        }
+    }
+
+    private List<String> extractYears(Document document) {
+        List<String> years = new ArrayList<>();
+
+        for (int column = 1; column <= MAX_YEARS; column++) {
+            String yearText = extractYearText(document, column);
+            if (!yearText.isEmpty()) {
+                years.add(yearText + YEAR_PREFIX + column);
+            }
+        }
+        return years;
+    }
+
+    private String extractYearText(Document document, int column) {
+        String selector = String.format("body > table:nth-child(5) > tbody > tr:nth-child(%d) > td:nth-child(%d)",
+                YEAR_ROW_INDEX, column);
+        return document.select(selector).text();
+    }
+
+    private List<String> extractGroups(Document document, int yearColumn) {
+        List<String> groups = new ArrayList<>();
+        Elements groupElements = getGroupElements(document, yearColumn);
+
+        for (int row = 1; row <= groupElements.size(); row++) {
+            String groupInfo = extractGroupInfo(groupElements, row);
+            groups.add(groupInfo);
+        }
+        return groups;
+    }
+
+    private Elements getGroupElements(Document document, int yearColumn) {
+        String selector = String.format(
+                "body > table:nth-child(5) > tbody > tr:nth-child(%d) > td:nth-child(%d) > table > tbody > tr:nth-child(1) > td > table > tbody > tr",
+                GROUP_ROW_INDEX, yearColumn
+        );
+        return document.select(selector);
+    }
+
+    private String extractGroupInfo(Elements groupElements, int rowIndex) {
+        Elements row = groupElements.select("tr:nth-child(" + rowIndex + ")");
+        Elements groupLink = row.select("td > a");
+        String href = groupLink.attr("href");
+        String groupId = extractGroupIdFromHref(href);
+
+        return row.text() + GROUP_PREFIX + groupId;
+    }
+
+    private String extractGroupIdFromHref(String href) {
+        int index = href.indexOf("obj");
+        if (index != -1) {
+            return href.substring(index).replace("obj", "");
+        }
+        return "";
+    }
+
+    private String findScheduleForCurrentWeek(String day, String groupId) throws IOException {
+        Document document = fetchDocument(SCHEDULE_URL + groupId);
+        return searchDayInSchedule(day, document);
+    }
+
+    private String findScheduleForNextWeek(String day, String groupId) throws IOException {
+        Document currentWeekDoc = fetchDocument(SCHEDULE_URL + groupId);
+        String weekParam = extractNextWeekParameter(currentWeekDoc);
+
+        Document nextWeekDoc = fetchDocument(SCHEDULE_URL + groupId + "&" + weekParam);
+        return searchDayInSchedule(day, nextWeekDoc);
+    }
+
+    private String extractNextWeekParameter(Document document) {
+        String selector = String.format(
+                "body > table:nth-child(%d) > tbody > tr:nth-child(%d) > td > table > tbody > tr > td:nth-child(%d) > a",
+                NEXT_WEEK_ROW_INDEX, NEXT_WEEK_ROW_INDEX, NEXT_WEEK_COL_INDEX
+        );
+
+        String href = document.select(selector).attr("href");
+        int index = href.indexOf("wk");
+        return (index != -1) ? href.substring(index) : "";
+    }
+
+    private String searchDayInSchedule(String day, Document document) {
+        for (int row = 1; row <= MAX_ROWS; row++) {
+            if (isDayRow(day, row, document)) {
+                return formatDaySchedule(day, row + 1, document);
+            }
         }
         return "Not found";
+    }
+
+    private boolean isDayRow(String day, int row, Document document) {
+        String selector = createRowSelector(row);
+        return document.select(selector).text().contains(day);
+    }
+
+    private String formatDaySchedule(String day, int startRow, Document document) {
+        StringBuilder schedule = new StringBuilder(day);
+        int currentRow = startRow;
+
+        while (hasScheduleRow(currentRow, document)) {
+            schedule.append(extractLessonInfo(currentRow, document));
+            currentRow++;
+        }
+
+        return cleanScheduleText(schedule.toString());
+    }
+
+    private boolean hasScheduleRow(int row, Document document) {
+        String selector = createRowSelector(row);
+        return !document.select(selector).text().isEmpty();
+    }
+
+    private String extractLessonInfo(int row, Document document) {
+        String number = extractCellText(document, row, 1);
+        String time = extractCellText(document, row, 2);
+        String schedule = extractCellText(document, row, 4);
+        String normalizedSchedule = normalizeScheduleText(schedule);
+
+        return String.format("\n%s) %s\n%s", number, time, normalizedSchedule);
+    }
+
+    private String extractCellText(Document document, int row, int column) {
+        String selector = String.format(
+                "body > table:nth-child(5) > tbody > tr:nth-child(%d) > td:nth-child(%d)",
+                row, column
+        );
+        return document.select(selector).text();
+    }
+
+    private String createRowSelector(int row) {
+        return String.format("body > table:nth-child(5) > tbody > tr:nth-child(%d)", row);
+    }
+
+    private String normalizeScheduleText(String schedule) {
+        return schedule.replace("Кабинет:", "\nКабинет:")
+                .replace("дистанционно", "(дистант)");
+    }
+
+    private String cleanScheduleText(String schedule) {
+        return schedule.replaceAll("\\s+$", "")
+                .replaceAll("Московское шоссе, 120", "")
+                .replaceAll(" Замена Свободное время на:", "");
+    }
+
+    private String createNoScheduleMessage(String groupId) {
+        return String.format("Нет расписания на нужную дату \n %s%s", SCHEDULE_URL, groupId);
+    }
+
+    private Document fetchDocument(String url) throws IOException {
+        return Jsoup.connect(url)
+                .userAgent(USER_AGENT)
+                .timeout(TIMEOUT_MS)
+                .get();
+    }
+
+    private void handleError(String method, Exception e) {
+        System.err.printf("Error WebSiteClass (method %s): %s%n", method, e.getMessage());
     }
 }
