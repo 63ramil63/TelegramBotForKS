@@ -160,6 +160,7 @@ public class WebSite {
     private String formatDaySchedule(String day, int startRow, Document document) {
         StringBuilder schedule = new StringBuilder(day);
         int currentRow = startRow;
+        currentRow++;
 
         while (hasScheduleRow(currentRow, document)) {
             schedule.append(extractLessonInfo(currentRow, document));
