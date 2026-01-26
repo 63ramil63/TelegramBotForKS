@@ -18,6 +18,7 @@ import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.util.Arrays;
 import java.util.List;
 
 public class TextResponseHandler {
@@ -190,7 +191,6 @@ public class TextResponseHandler {
     private boolean handleSpecCommand(long chatId, String data) {
         String[] parts = data.split(" ");
         String cmd = parts[0];
-        String args = parts.length > 1 ? parts[1] : "";
 
         switch (cmd) {
             case "/start" -> {
@@ -198,7 +198,7 @@ public class TextResponseHandler {
                 return true;
             }
             case "/sendToAll" -> {
-                handleSendToAllUsers(chatId, args);
+                handleSendToAllUsers(chatId, data);
                 return true;
             }
             case "/sendNotification" -> {
@@ -206,7 +206,7 @@ public class TextResponseHandler {
                 return true;
             }
             case "/addAdmin" -> {
-                handleAddAdmin(chatId, args);
+                handleAddAdmin(chatId, data);
                 return true;
             }
             case "/deleteFolder" -> {
@@ -218,11 +218,11 @@ public class TextResponseHandler {
                 return true;
             }
             case "/ban_user" -> {
-                handleBanUser(chatId, args);
+                handleBanUser(chatId, data);
                 return true;
             }
             case "/unban_user" -> {
-                handleUnbanUser(chatId, args);
+                handleUnbanUser(chatId, data);
                 return true;
             }
         }
@@ -367,6 +367,7 @@ public class TextResponseHandler {
     }
 
     private BanInfo createBanInfo(String[] args, long adminChatId) {
+        System.out.println(Arrays.toString(args));
         String banType = args[1];
         if (!banType.equals(BanType.FULL_BAN.toString()) &&
                 !banType.equals(BanType.SHARING_BAN.toString())) {
