@@ -3,7 +3,6 @@ package org.example.bot;
 import org.example.bot.ban.types.BanType;
 import org.example.bot.ban.types.ban.info.BanInfo;
 import org.example.bot.config.BotConfig;
-import org.example.bot.message.markup.MarkupKey;
 import org.example.bot.message.markup.MarkupSetter;
 import org.example.bot.response.CallbackResponseHandler;
 import org.example.bot.response.DocumentResponseHandler;
@@ -14,22 +13,11 @@ import org.example.controller.UserBansController;
 import org.example.controller.UserController;
 import org.example.database.repository.DeletionLogRepository;
 import org.example.files.FilesController;
-import org.example.files.exception.FileSizeException;
-import org.example.files.exception.IncorrectExtensionException;
-import org.example.files.exception.InvalidCallbackDataException;
-import org.example.role.AdminRole;
 import org.example.schedule.ScheduleCache;
-import org.example.utility.LinkUtil;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
-import org.telegram.telegrambots.meta.api.methods.GetFile;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.objects.Document;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.concurrent.*;
 
 public class TBot extends TelegramLongPollingBot {

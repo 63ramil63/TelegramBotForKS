@@ -10,16 +10,12 @@ import java.util.List;
 
 public class WebSite {
     private static final String BASE_URL = "https://lk.ks.psuti.ru/?mn=2";
-    private static final String SCHEDULE_URL = BASE_URL + "&obj=";
     private static final String USER_AGENT = "Chrome";
     private static final int TIMEOUT_MS = 10_000;
     private static final int MAX_YEARS = 10;
-    private static final int MAX_ROWS = 60;
 
     private static final int YEAR_ROW_INDEX = 6;
     private static final int GROUP_ROW_INDEX = 7;
-    private static final int NEXT_WEEK_ROW_INDEX = 4;
-    private static final int NEXT_WEEK_COL_INDEX = 8;
 
     private static final String YEAR_PREFIX = "Year";
     private static final String GROUP_PREFIX = "Group";
@@ -30,7 +26,7 @@ public class WebSite {
             return extractYears(document);
         } catch (IOException e) {
             handleError("getYears", e);
-            return null;
+            return new ArrayList<>();
         }
     }
 
@@ -40,28 +36,7 @@ public class WebSite {
             return extractGroups(document, yearColumn);
         } catch (IOException e) {
             handleError("getGroups", e);
-            return null;
-        }
-    }
-
-    public String getSchedule(String day, String groupId) {
-        try {
-            String schedule = findScheduleForCurrentWeek(day, groupId);
-
-            if (!schedule.equals("Not found")) {
-                return schedule;
-            }
-
-            schedule = findScheduleForNextWeek(day, groupId);
-
-            if (!schedule.equals("Not found")) {
-                return schedule;
-            }
-
-            return createNoScheduleMessage(groupId);
-        } catch (IOException e) {
-            handleError("getSchedule", e);
-            return "Not found";
+            return new ArrayList<>();
         }
     }
 
@@ -78,9 +53,15 @@ public class WebSite {
     }
 
     private String extractYearText(Document document, int column) {
-        String selector = String.format("body > table:nth-child(5) > tbody > tr:nth-child(%d) > td:nth-child(%d)",
-                YEAR_ROW_INDEX, column);
-        return document.select(selector).text();
+        String selector = String.format(
+                "body > table:nth-child(5) > tbody > tr:nth-child(%d) > td:nth-child(%d)",
+                YEAR_ROW_INDEX, column
+        );
+        return document.select(selector).text().trim();
+    }
+
+    public String getSchedule(String day, String groupId) {
+        return "";
     }
 
     private List<String> extractGroups(Document document, int yearColumn) {
@@ -89,14 +70,16 @@ public class WebSite {
 
         for (int row = 1; row <= groupElements.size(); row++) {
             String groupInfo = extractGroupInfo(groupElements, row);
-            groups.add(groupInfo);
+            if (!groupInfo.isEmpty()) {
+                groups.add(groupInfo);
+            }
         }
         return groups;
     }
 
     private Elements getGroupElements(Document document, int yearColumn) {
         String selector = String.format(
-                "body > table:nth-child(5) > tbody > tr:nth-child(%d) > td:nth-child(%d) > table > tbody > tr:nth-child(1) > td > table > tbody > tr",
+                "body > table:nth-child(5) > tbody > tr:nth-child(%d) > td:nth-child(%d) > table > tbody > tr",
                 GROUP_ROW_INDEX, yearColumn
         );
         return document.select(selector);
@@ -108,107 +91,24 @@ public class WebSite {
         String href = groupLink.attr("href");
         String groupId = extractGroupIdFromHref(href);
 
-        return row.text() + GROUP_PREFIX + groupId;
-    }
-
-    private String extractGroupIdFromHref(String href) {
-        int index = href.indexOf("obj");
-        if (index != -1) {
-            return href.substring(index).replace("obj", "");
+        String groupName = row.text().trim();
+        if (!groupName.isEmpty() && !groupId.isEmpty()) {
+            return groupName + GROUP_PREFIX + groupId;
         }
         return "";
     }
 
-    private String findScheduleForCurrentWeek(String day, String groupId) throws IOException {
-        Document document = fetchDocument(SCHEDULE_URL + groupId);
-        return searchDayInSchedule(day, document);
-    }
-
-    private String findScheduleForNextWeek(String day, String groupId) throws IOException {
-        Document currentWeekDoc = fetchDocument(SCHEDULE_URL + groupId);
-        String weekParam = extractNextWeekParameter(currentWeekDoc);
-
-        Document nextWeekDoc = fetchDocument(SCHEDULE_URL + groupId + "&" + weekParam);
-        return searchDayInSchedule(day, nextWeekDoc);
-    }
-
-    private String extractNextWeekParameter(Document document) {
-        String selector = String.format(
-                "body > table:nth-child(%d) > tbody > tr:nth-child(%d) > td > table > tbody > tr > td:nth-child(%d) > a",
-                NEXT_WEEK_ROW_INDEX, NEXT_WEEK_ROW_INDEX, NEXT_WEEK_COL_INDEX
-        );
-
-        String href = document.select(selector).attr("href");
-        int index = href.indexOf("wk");
-        return (index != -1) ? href.substring(index) : "";
-    }
-
-    private String searchDayInSchedule(String day, Document document) {
-        for (int row = 1; row <= MAX_ROWS; row++) {
-            if (isDayRow(day, row, document)) {
-                return formatDaySchedule(day, row + 1, document);
+    private String extractGroupIdFromHref(String href) {
+        int startIndex = href.indexOf("obj=");
+        if (startIndex != -1) {
+            String substring = href.substring(startIndex + 4);
+            int endIndex = substring.indexOf("&");
+            if (endIndex != -1) {
+                return substring.substring(0, endIndex);
             }
+            return substring;
         }
-        return "Not found";
-    }
-
-    private boolean isDayRow(String day, int row, Document document) {
-        String selector = createRowSelector(row);
-        return document.select(selector).text().contains(day);
-    }
-
-    private String formatDaySchedule(String day, int startRow, Document document) {
-        StringBuilder schedule = new StringBuilder(day);
-        int currentRow = startRow;
-        currentRow++;
-
-        while (hasScheduleRow(currentRow, document)) {
-            schedule.append(extractLessonInfo(currentRow, document));
-            currentRow++;
-        }
-
-        return cleanScheduleText(schedule.toString());
-    }
-
-    private boolean hasScheduleRow(int row, Document document) {
-        String selector = createRowSelector(row);
-        return !document.select(selector).text().isEmpty();
-    }
-
-    private String extractLessonInfo(int row, Document document) {
-        String number = extractCellText(document, row, 1);
-        String time = extractCellText(document, row, 2);
-        String schedule = extractCellText(document, row, 4);
-        String normalizedSchedule = normalizeScheduleText(schedule);
-
-        return String.format("\n%s) %s\n%s", number, time, normalizedSchedule);
-    }
-
-    private String extractCellText(Document document, int row, int column) {
-        String selector = String.format(
-                "body > table:nth-child(5) > tbody > tr:nth-child(%d) > td:nth-child(%d)",
-                row, column
-        );
-        return document.select(selector).text();
-    }
-
-    private String createRowSelector(int row) {
-        return String.format("body > table:nth-child(5) > tbody > tr:nth-child(%d)", row);
-    }
-
-    private String normalizeScheduleText(String schedule) {
-        return schedule.replace("Кабинет:", "\nКабинет:")
-                .replace("дистанционно", "(дистант)");
-    }
-
-    private String cleanScheduleText(String schedule) {
-        return schedule.replaceAll("\\s+$", "")
-                .replaceAll("Московское шоссе, 120", "")
-                .replaceAll(" Замена Свободное время на:", "");
-    }
-
-    private String createNoScheduleMessage(String groupId) {
-        return String.format("Нет расписания на нужную дату \n %s%s", SCHEDULE_URL, groupId);
+        return "";
     }
 
     private Document fetchDocument(String url) throws IOException {

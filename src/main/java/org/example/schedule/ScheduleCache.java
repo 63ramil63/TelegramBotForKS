@@ -1,5 +1,6 @@
 package org.example.schedule;
 
+import org.example.bot.config.BotConfig;
 import org.example.site.WebSite;
 
 import java.time.LocalDate;
@@ -11,13 +12,12 @@ import java.util.concurrent.TimeUnit;
 public class ScheduleCache {
     private final int cacheDuration;
     private static final Map<String, CachedSchedule> cachedSchedule = new ConcurrentHashMap<>();
-    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     private String formatDate(boolean isToday) {
         if (isToday) {
-            return LocalDate.now().format(formatter);
+            return LocalDate.now().format(BotConfig.formatter);
         } else {
-            return LocalDate.now().plusDays(1).format(formatter);
+            return LocalDate.now().plusDays(1).format(BotConfig.formatter);
         }
     }
 

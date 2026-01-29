@@ -4,6 +4,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.FileSystems;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Properties;
 
@@ -18,6 +19,8 @@ public class BotConfig {
     private static List<String> initialAdmins;
     private static int threadPoolSize;
     private static int maxThreadPoolSize;
+
+    public static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     private BotConfig() {}
 
