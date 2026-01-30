@@ -14,6 +14,7 @@ import org.example.controller.UserController;
 import org.example.database.repository.DeletionLogRepository;
 import org.example.files.FilesController;
 import org.example.schedule.ScheduleCache;
+import org.example.site.manager.ScheduleManager;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
@@ -33,6 +34,7 @@ public class TBot extends TelegramLongPollingBot {
     private FilesAndFoldersController filesAndFoldersController;
     private LinksAndGroupsController linksAndGroupsController;
     private DocumentResponseHandler documentResponseHandler;
+    private ScheduleManager scheduleManager;
 
     public final StringBuilder notification = new StringBuilder("Нет каких либо оповещений");
 
@@ -65,10 +67,12 @@ public class TBot extends TelegramLongPollingBot {
         // Инициализация кэша расписания
         scheduleCache = new ScheduleCache(BotConfig.getCacheDuration());
 
+        scheduleManager = new ScheduleManager();
         // Инициализация MarkupSetter
         markupSetter = new MarkupSetter(
                 filesController, filesAndFoldersController,
-                userController, linksAndGroupsController
+                userController, linksAndGroupsController,
+                scheduleManager
         );
 
         // Инициализация репозитория логов удаления
@@ -83,7 +87,7 @@ public class TBot extends TelegramLongPollingBot {
         callbackResponseHandler = new CallbackResponseHandler(
                 this, markupSetter, filesAndFoldersController,
                 linksAndGroupsController, userController, userBansController,
-                filesController, deletionLogRepository
+                filesController, deletionLogRepository, scheduleManager
         );
 
         documentResponseHandler = new DocumentResponseHandler(

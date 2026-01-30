@@ -15,10 +15,13 @@ import org.example.database.repository.DeletionLogRepository;
 import org.example.dto.FileDTO;
 import org.example.files.FilesController;
 import org.example.schedule.ScheduleCache;
+import org.example.site.manager.ScheduleManager;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 
 public class CallbackResponseHandler {
 
@@ -31,13 +34,14 @@ public class CallbackResponseHandler {
     private final FilesController filesController;
     private final DeletionLogRepository deletionLogRepository;
     private final ScheduleCache scheduleCache;
+    private final ScheduleManager scheduleManager;
 
     public CallbackResponseHandler(TBot bot, MarkupSetter markupSetter,
                                    FilesAndFoldersController filesAndFoldersController,
                                    LinksAndGroupsController linksAndGroupsController,
                                    UserController userController, UserBansController userBansController,
-                                   FilesController filesController,
-                                   DeletionLogRepository deletionLogRepository) {
+                                   FilesController filesController, DeletionLogRepository deletionLogRepository,
+                                   ScheduleManager scheduleManager) {
         this.bot = bot;
         this.markupSetter = markupSetter;
         this.filesAndFoldersController = filesAndFoldersController;
@@ -47,6 +51,7 @@ public class CallbackResponseHandler {
         this.filesController = filesController;
         this.deletionLogRepository = deletionLogRepository;
         this.scheduleCache = new ScheduleCache(BotConfig.getCacheDuration());
+        this.scheduleManager = scheduleManager;
     }
 
     public void handleCallback(long chatId, String callbackData, int messageId,
@@ -66,6 +71,10 @@ public class CallbackResponseHandler {
             handleFolderNavigation(chatId, callbackData, messageId);
         } else if (callbackData.contains("DeleteFileButton") || callbackData.contains("FilesDelAdm")) {
             handleFileDeletionMenu(chatId, callbackData, messageId);
+        } else if (callbackData.contains("ScheduleDay")) {
+            handleScheduleDay(chatId, messageId);
+        } else if (callbackData.endsWith("_ScheduleDate")) {
+            handleScheduleDate(chatId, messageId, callbackData);
         } else if (callbackData.endsWith("File")) {
             deleteMessageAndSendFile(chatId, callbackData, messageId, textHandler);
         } else if (callbackData.endsWith("_FDel")) {
@@ -243,6 +252,33 @@ public class CallbackResponseHandler {
         EditMessageText message = createEditMessage(chatId, "Отправьте название группы", messageId);
         message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK_TO_LINKS));
         executeEditSafely(message, "AddGroupButton", chatId);
+    }
+
+    public void handleScheduleDay(long chatId, int messageId) {
+        String groupId = userController.getGroupId(chatId);
+        if (groupId.isEmpty()) {
+            handleGroupNotSelected(chatId, messageId);
+            return;
+        }
+        // Здесь должен быть вызов scheduleCache
+
+        EditMessageText message = createEditMessage(chatId, "Выберите день", messageId);
+        message.setReplyMarkup(markupSetter.getChangeableMarkup("ScheduleDay" + groupId));
+        executeEditSafely(message, "ScheduleDay", chatId);
+    }
+
+    public void handleScheduleDate(long chatId, int messageId, String key) {
+        LocalDate date = null;
+        try {
+            date = LocalDate.parse(key.replaceAll("_ScheduleDate", ""));
+        } catch (DateTimeParseException e) {
+            System.err.println("Date parse error " + key.replaceAll("_ScheduleDate", ""));
+        }
+        String group = userController.getGroupId(chatId);
+        String schedule = scheduleManager.getScheduleForDate(group, date);
+        EditMessageText message = createEditMessage(chatId, schedule, messageId);
+        message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK));
+        executeEditSafely(message, "ScheduleDate", chatId);
     }
 
     public void handleTodaySchedule(long chatId, int messageId) {

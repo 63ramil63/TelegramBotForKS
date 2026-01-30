@@ -12,9 +12,11 @@ import org.example.dto.GroupDTO;
 import org.example.dto.LinkDTO;
 import org.example.files.FilesController;
 import org.example.site.WebSite;
+import org.example.site.manager.ScheduleManager;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,6 +27,7 @@ public class MarkupSetter {
     private final FilesAndFoldersController filesAndFoldersController;
     private final UserController userController;
     private final LinksAndGroupsController linksAndGroupsController;
+    private final ScheduleManager scheduleManager;
 
     private static InlineKeyboardButton backButtonToMainMenu;
     private static InlineKeyboardButton addNewGroupButton;
@@ -33,11 +36,13 @@ public class MarkupSetter {
     private static InlineKeyboardButton backButtonToLessons;
 
     public MarkupSetter(FilesController filesController, FilesAndFoldersController filesAndFoldersController,
-                        UserController userController, LinksAndGroupsController linksAndGroupsController) {
+                        UserController userController, LinksAndGroupsController linksAndGroupsController,
+                        ScheduleManager scheduleManager) {
         this.filesController = filesController;
         this.filesAndFoldersController = filesAndFoldersController;
         this.userController = userController;
         this.linksAndGroupsController = linksAndGroupsController;
+        this.scheduleManager = scheduleManager;
         backButtonToMainMenu = ButtonSetter.setButton("Назад", "BackButton");
         backButtonToFiles = ButtonSetter.setButton("Назад", "FileButton");
         backButtonToLinks = ButtonSetter.setButton("Назад", "LinksButton");
@@ -107,9 +112,10 @@ public class MarkupSetter {
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
 
         //создание кнопок и добавление к ним возвращаемого значения при нажатии
-        InlineKeyboardButton today = ButtonSetter.setButton("На сегодня", "TodayScheduleButton");
-        InlineKeyboardButton tomorrow = ButtonSetter.setButton("На завтра", "TomorrowScheduleButton");
-        keyboard.add(ButtonSetter.setRow(today, tomorrow));
+//        InlineKeyboardButton today = ButtonSetter.setButton("На сегодня", "TodayScheduleButton");
+//        InlineKeyboardButton tomorrow = ButtonSetter.setButton("На завтра", "TomorrowScheduleButton");
+        InlineKeyboardButton scheduleDay = ButtonSetter.setButton("Расписание", "ScheduleDay");
+        keyboard.add(ButtonSetter.setRow(scheduleDay));
 
         InlineKeyboardButton selectYear = ButtonSetter.setButton("Выбрать курс", "SelectYearButton");
         //кнопка для выбора курса
@@ -414,6 +420,20 @@ public class MarkupSetter {
         return markup;
     }
 
+    private InlineKeyboardMarkup getScheduledDays(String key) {
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+        String groupId = key.replaceAll("ScheduleDay", "");
+        List<LocalDate> availableDates = scheduleManager.getAvailableDates(groupId);
+        for (LocalDate date : availableDates) {
+            InlineKeyboardButton button = ButtonSetter.setButton(date.format(BotConfig.formatter), date + "_ScheduleDate");
+            keyboard.add(ButtonSetter.setRow(button));
+        }
+        keyboard.add(ButtonSetter.setRow(backButtonToLessons));
+        markup.setKeyboard(keyboard);
+        return markup;
+    }
+
     private InlineKeyboardMarkup folderCase(String key) throws IllegalArgumentException {
         if (key.contains("_Folder")) {
             key = key.replace("_Folder", "");
@@ -463,6 +483,8 @@ public class MarkupSetter {
     public InlineKeyboardMarkup getChangeableMarkup(String key) throws IllegalArgumentException {
         if (key.startsWith("/")) {
             return commandCase(key);
+        } else if (key.contains("ScheduleDay")) {
+            return getScheduledDays(key);
         } else if (key.contains("_Folder")) {
             return folderCase(key);
         } else if (key.contains("File") && !key.contains("Links")) {

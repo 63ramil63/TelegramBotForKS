@@ -62,6 +62,16 @@ public class ScheduleManager {
      */
     public List<LocalDate> getAvailableDates(String groupId) {
         GroupScheduleInfo groupInfo = scheduleCache.get(groupId);
+        if (groupInfo == null || groupInfo.getAllSchedules().isEmpty() || groupInfo.isExpired()) {
+            try {
+                updateGroupSchedule(groupId);
+                groupInfo = scheduleCache.get(groupId);
+            } catch (IOException e) {
+                System.err.printf("Не удалось обновить расписание для группы %s: %s%n",
+                        groupId, e.getMessage());
+            }
+        }
+
         if (groupInfo == null || groupInfo.getAllSchedules().isEmpty()) {
             return new ArrayList<>();
         }
