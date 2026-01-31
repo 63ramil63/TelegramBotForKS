@@ -1,6 +1,5 @@
 package org.example.bot.message.markup;
 
-import org.example.bot.TBot;
 import org.example.bot.config.BotConfig;
 import org.example.bot.message.markup.button.ButtonSetter;
 import org.example.controller.FilesAndFoldersController;
@@ -11,7 +10,7 @@ import org.example.dto.FolderDTO;
 import org.example.dto.GroupDTO;
 import org.example.dto.LinkDTO;
 import org.example.files.FilesController;
-import org.example.site.WebSite;
+import org.example.site.YearsAndGroupParser;
 import org.example.site.manager.ScheduleManager;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
@@ -493,19 +492,29 @@ public class MarkupSetter {
             return linksCase(key);
         } else if (key.contains("Year")) {
             if (!savedChangeableMarkup.containsKey("Year")) {
-                WebSite webSite = new WebSite();
-                List<String> yearsList = webSite.getYears();
+                YearsAndGroupParser yearsAndGroupParser = new YearsAndGroupParser();
+                List<String> yearsList = yearsAndGroupParser.getYears();
                 InlineKeyboardMarkup markup = setMarkupFromList(yearsList, "Year");
                 savedChangeableMarkup.put("Year", markup);
             }
             return savedChangeableMarkup.get("Year");
         } else if (key.contains("Group")) {
+            System.out.println("-----------------------------");
+            System.out.println(key);
+            System.out.println("-----------------------------");
             if (!savedChangeableMarkup.containsKey(key)) {
                 String num = key.replace("Group", "");
+                System.out.println("-----------------------------");
                 int number = Integer.parseInt(num);
-                WebSite webSite = new WebSite();
-                List<String> groupList = webSite.getGroups(number);
+                System.out.println(number + " - number");
+                System.out.println("-----------------------------");
+                YearsAndGroupParser yearsAndGroupParser = new YearsAndGroupParser();
+                System.out.println("-----------------------------");
+                List<String> groupList = yearsAndGroupParser.getGroups(number);
+                System.out.println(groupList + " groupList");
+                System.out.println("-----------------------------");
                 InlineKeyboardMarkup markup = setMarkupFromList(groupList, "Group");
+                System.out.println(markup);
                 savedChangeableMarkup.put("Group" + number, markup);
             }
             return savedChangeableMarkup.get(key);

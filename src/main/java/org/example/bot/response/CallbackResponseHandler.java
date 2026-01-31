@@ -2,7 +2,6 @@ package org.example.bot.response;
 
 import org.example.bot.TBot;
 import org.example.bot.ban.types.ban.info.BanInfo;
-import org.example.bot.config.BotConfig;
 import org.example.bot.message.DeleteMessageBuilder;
 import org.example.bot.message.EditMessageBuilder;
 import org.example.bot.message.markup.MarkupKey;
@@ -14,7 +13,6 @@ import org.example.controller.UserController;
 import org.example.database.repository.DeletionLogRepository;
 import org.example.dto.FileDTO;
 import org.example.files.FilesController;
-import org.example.schedule.ScheduleCache;
 import org.example.site.manager.ScheduleManager;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -33,7 +31,6 @@ public class CallbackResponseHandler {
     private final UserBansController userBansController;
     private final FilesController filesController;
     private final DeletionLogRepository deletionLogRepository;
-    private final ScheduleCache scheduleCache;
     private final ScheduleManager scheduleManager;
 
     public CallbackResponseHandler(TBot bot, MarkupSetter markupSetter,
@@ -50,7 +47,6 @@ public class CallbackResponseHandler {
         this.userBansController = userBansController;
         this.filesController = filesController;
         this.deletionLogRepository = deletionLogRepository;
-        this.scheduleCache = new ScheduleCache(BotConfig.getCacheDuration());
         this.scheduleManager = scheduleManager;
     }
 
@@ -288,7 +284,7 @@ public class CallbackResponseHandler {
             return;
         }
         // Здесь должен быть вызов scheduleCache
-        String schedule = scheduleCache.getScheduleToday(groupId);
+        String schedule = scheduleManager.getScheduleForDate(groupId, LocalDate.now());
         EditMessageText message = createEditMessage(chatId, schedule, messageId);
         message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.LESSON_MENU));
         executeEditSafely(message, "TodayScheduleButton", chatId);
@@ -301,7 +297,7 @@ public class CallbackResponseHandler {
             return;
         }
         // Здесь должен быть вызов scheduleCache
-        String schedule = scheduleCache.getScheduleTomorrow(groupId);
+        String schedule = scheduleManager.getScheduleForDate(groupId, LocalDate.now());
         EditMessageText message = createEditMessage(chatId, schedule, messageId);
         message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.LESSON_MENU));
         executeEditSafely(message, "TomorrowScheduleButton", chatId);
@@ -556,6 +552,7 @@ public class CallbackResponseHandler {
     }
 
     private void handleYearSelection(long chatId, String data, int messageId) {
+        System.out.println(data + " -------------------------");
         EditMessageText message = createEditMessage(chatId, "Выберите вашу группу", messageId);
         message.setReplyMarkup(markupSetter.getChangeableMarkup(data));
         executeEditSafely(message, "YearSelection", chatId);
@@ -565,6 +562,9 @@ public class CallbackResponseHandler {
         EditMessageText message = createEditMessage(chatId, "Выберите вашу группу", messageId);
         int index = data.indexOf("Year");
         String groupNum = data.substring(index).replace("Year", "");
+        System.out.println("----------------------------");
+        System.out.println("Group" + groupNum);
+        System.out.println("----------------------------");
         message.setReplyMarkup(markupSetter.getChangeableMarkup("Group" + groupNum));
         executeEditSafely(message, "YearSelectionFromList", chatId);
     }

@@ -1,6 +1,6 @@
 package org.example.site;
 
-import org.jsoup.Jsoup;
+import org.example.site.fetcher.DocumentFetcher;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
@@ -8,34 +8,42 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class WebSite {
-    private static final String BASE_URL = "https://lk.ks.psuti.ru/?mn=2";
-    private static final String USER_AGENT = "Chrome";
-    private static final int TIMEOUT_MS = 10_000;
-    private static final int MAX_YEARS = 10;
+public class YearsAndGroupParser {
+    private final int MAX_YEARS = 10;
 
-    private static final int YEAR_ROW_INDEX = 6;
-    private static final int GROUP_ROW_INDEX = 7;
+    private final int YEAR_ROW_INDEX = 6;
+    private final int GROUP_ROW_INDEX = 7;
 
-    private static final String YEAR_PREFIX = "Year";
-    private static final String GROUP_PREFIX = "Group";
+    private final String YEAR_PREFIX = "Year";
+    private final String GROUP_PREFIX = "Group";
+
+    private Document document;
+
+
+    public YearsAndGroupParser() {
+        try {
+            DocumentFetcher documentFetcher = new DocumentFetcher();
+            document = documentFetcher.getBaseDocument();
+        } catch (IOException e) {
+            System.out.printf("Не удалось получить группы и годы %n%s%n", e);
+        }
+    }
 
     public List<String> getYears() {
-        try {
-            Document document = fetchDocument(BASE_URL);
+        System.out.println("Document isn't null ? " + document != null);
+        if (document != null) {
             return extractYears(document);
-        } catch (IOException e) {
-            handleError("getYears", e);
+        } else {
+            handleError("getYears", new RuntimeException("Base document is null"));
             return new ArrayList<>();
         }
     }
 
     public List<String> getGroups(int yearColumn) {
-        try {
-            Document document = fetchDocument(BASE_URL);
+        if (document != null) {
             return extractGroups(document, yearColumn);
-        } catch (IOException e) {
-            handleError("getGroups", e);
+        } else {
+            handleError("getGroups", new RuntimeException("Base document is null"));
             return new ArrayList<>();
         }
     }
@@ -60,23 +68,36 @@ public class WebSite {
         return document.select(selector).text().trim();
     }
 
-    public String getSchedule(String day, String groupId) {
-        return "";
-    }
-
     private List<String> extractGroups(Document document, int yearColumn) {
         List<String> groups = new ArrayList<>();
-        Elements groupElements = getGroupElements(document, yearColumn);
 
-        for (int row = 1; row <= groupElements.size(); row++) {
-            String groupInfo = extractGroupInfo(groupElements, row);
-            if (!groupInfo.isEmpty()) {
-                groups.add(groupInfo);
+        // Простой селектор: находим все ссылки с группами в нужном столбце
+        String selector = String.format(
+                "body > table:nth-child(5) > tbody > tr:nth-child(%d) > td:nth-child(%d) a",
+                GROUP_ROW_INDEX, yearColumn
+        );
+
+        System.out.println("DEBUG: Simple selector: " + selector);
+
+        Elements groupLinks = document.select(selector);
+        System.out.println("DEBUG: Found " + groupLinks.size() + " group links");
+
+        for (org.jsoup.nodes.Element link : groupLinks) {
+            String href = link.attr("href");
+            String groupName = link.text().trim();
+            String groupId = extractGroupIdFromHref(href);
+
+            if (!groupName.isEmpty() && !groupId.isEmpty()) {
+                // ВЕРНУТЬ СТАРЫЙ ФОРМАТ: "названиеGroupID"
+                groups.add(groupName + GROUP_PREFIX + groupId);
+                System.out.println("DEBUG: Added group: " + groupName + GROUP_PREFIX + groupId);
             }
         }
+
+        System.out.println("DEBUG: Total groups: " + groups);
         return groups;
     }
-
+    
     private Elements getGroupElements(Document document, int yearColumn) {
         String selector = String.format(
                 "body > table:nth-child(5) > tbody > tr:nth-child(%d) > td:nth-child(%d) > table > tbody > tr",
@@ -109,13 +130,6 @@ public class WebSite {
             return substring;
         }
         return "";
-    }
-
-    private Document fetchDocument(String url) throws IOException {
-        return Jsoup.connect(url)
-                .userAgent(USER_AGENT)
-                .timeout(TIMEOUT_MS)
-                .get();
     }
 
     private void handleError(String method, Exception e) {

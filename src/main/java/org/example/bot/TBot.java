@@ -13,7 +13,6 @@ import org.example.controller.UserBansController;
 import org.example.controller.UserController;
 import org.example.database.repository.DeletionLogRepository;
 import org.example.files.FilesController;
-import org.example.schedule.ScheduleCache;
 import org.example.site.manager.ScheduleManager;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -27,7 +26,6 @@ public class TBot extends TelegramLongPollingBot {
     private TextResponseHandler textResponseHandler;
     private CallbackResponseHandler callbackResponseHandler;
     private FilesController filesController;
-    private ScheduleCache scheduleCache;
     private UserController userController;
     private UserBansController userBansController;
     private MarkupSetter markupSetter;
@@ -65,8 +63,6 @@ public class TBot extends TelegramLongPollingBot {
         );
 
         // Инициализация кэша расписания
-        scheduleCache = new ScheduleCache(BotConfig.getCacheDuration());
-
         scheduleManager = new ScheduleManager();
         // Инициализация MarkupSetter
         markupSetter = new MarkupSetter(
@@ -104,16 +100,6 @@ public class TBot extends TelegramLongPollingBot {
 
         // Настройка shutdown hook
         Runtime.getRuntime().addShutdownHook(new Thread(executorService::shutdown));
-
-        // Настройка очистки кэша
-        try (ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1)) {
-            scheduler.scheduleAtFixedRate(
-                    scheduleCache::clearExpiredCache,
-                    BotConfig.getCacheDuration(),
-                    BotConfig.getCacheDuration(),
-                    TimeUnit.MINUTES
-            );
-        }
     }
 
     @Override

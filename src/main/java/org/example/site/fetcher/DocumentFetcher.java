@@ -15,8 +15,9 @@ public class DocumentFetcher {
     private static final int NEXT_WEEK_ROW_INDEX = 4;
     private static final int NEXT_WEEK_COL_INDEX = 8;
 
-    private final Document documentThisWeek;
-    private final Document documentNextWeek;
+    private Document documentThisWeek;
+    private Document documentNextWeek;
+    private Document baseDocument;
     private String weekParam;
 
     public DocumentFetcher(String groupId) throws IOException {
@@ -24,8 +25,16 @@ public class DocumentFetcher {
         documentNextWeek = fetchDocumentsWithScheduleNextWeek(groupId);
     }
 
+    public DocumentFetcher() throws IOException {
+        baseDocument = fetchDocumentWithYearsAndGroups();
+    }
+
     public ScheduleDocumentInfo getScheduleDocumentInfo() {
         return new ScheduleDocumentInfo(documentThisWeek, documentNextWeek, weekParam);
+    }
+
+    public Document getBaseDocument() {
+        return baseDocument;
     }
 
     private Document fetchDocumentsWithSchedule(String groupId) throws IOException {
@@ -44,6 +53,10 @@ public class DocumentFetcher {
                 .userAgent(USER_AGENT)
                 .timeout(TIMEOUT_MS)
                 .get();
+    }
+
+    private Document fetchDocumentWithYearsAndGroups() throws IOException {
+        return Jsoup.connect(BASE_URL).get();
     }
 
     private String extractNextWeekParameter(Document document) {
