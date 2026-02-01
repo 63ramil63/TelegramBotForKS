@@ -424,10 +424,40 @@ public class MarkupSetter {
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
         String groupId = key.replaceAll("ScheduleDay", "");
         List<LocalDate> availableDates = scheduleManager.getAvailableDates(groupId);
-        for (LocalDate date : availableDates) {
-            InlineKeyboardButton button = ButtonSetter.setButton(date.format(BotConfig.formatter), date + "_ScheduleDate");
-            keyboard.add(ButtonSetter.setRow(button));
+        LocalDate today = LocalDate.now();
+
+        // Обрабатываем даты парами с проверкой границ массива
+        for (int i = 0; i < availableDates.size(); i++) {
+            // Получаем первую дату
+            LocalDate date = availableDates.get(i);
+            String dateText = date.format(BotConfig.formatter);
+
+            // Проверяем, является ли дата сегодняшним днем
+            if (date.equals(today)) {
+                dateText = "Сегодня (" + dateText + ")";
+            }
+
+            InlineKeyboardButton button = ButtonSetter.setButton(dateText, date + "_ScheduleDate");
+
+            // Проверяем, есть ли следующая дата в массиве
+            if (i + 1 < availableDates.size()) {
+                LocalDate date1 = availableDates.get(i + 1);
+                String dateText1 = date1.format(BotConfig.formatter);
+
+                // Проверяем, является ли вторая дата сегодняшним днем
+                if (date1.equals(today)) {
+                    dateText1 = "Сегодня (" + dateText1 + ")";
+                }
+
+                InlineKeyboardButton button1 = ButtonSetter.setButton(dateText1, date1 + "_ScheduleDate");
+                keyboard.add(ButtonSetter.setRow(button, button1));
+                i++; // Увеличиваем i, так как обработали две даты
+            } else {
+                // Если дача только одна в паре - добавляем ее отдельно
+                keyboard.add(ButtonSetter.setRow(button));
+            }
         }
+
         keyboard.add(ButtonSetter.setRow(backButtonToLessons));
         markup.setKeyboard(keyboard);
         return markup;
