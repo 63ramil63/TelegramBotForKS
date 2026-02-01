@@ -551,20 +551,10 @@ public class CallbackResponseHandler {
         textHandler.handleTextResponse(chatId, data + "_lnk");
     }
 
-    private void handleYearSelection(long chatId, String data, int messageId) {
-        System.out.println(data + " -------------------------");
-        EditMessageText message = createEditMessage(chatId, "Выберите вашу группу", messageId);
-        message.setReplyMarkup(markupSetter.getChangeableMarkup(data));
-        executeEditSafely(message, "YearSelection", chatId);
-    }
-
     private void handleGroupSelectionFromYearList(long chatId, String data, int messageId) {
         EditMessageText message = createEditMessage(chatId, "Выберите вашу группу", messageId);
         int index = data.indexOf("Year");
         String groupNum = data.substring(index).replace("Year", "");
-        System.out.println("----------------------------");
-        System.out.println("Group" + groupNum);
-        System.out.println("----------------------------");
         message.setReplyMarkup(markupSetter.getChangeableMarkup("Group" + groupNum));
         executeEditSafely(message, "YearSelectionFromList", chatId);
     }

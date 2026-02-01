@@ -77,10 +77,8 @@ public class YearsAndGroupParser {
                 GROUP_ROW_INDEX, yearColumn
         );
 
-        System.out.println("DEBUG: Simple selector: " + selector);
 
         Elements groupLinks = document.select(selector);
-        System.out.println("DEBUG: Found " + groupLinks.size() + " group links");
 
         for (org.jsoup.nodes.Element link : groupLinks) {
             String href = link.attr("href");
@@ -96,27 +94,6 @@ public class YearsAndGroupParser {
 
         System.out.println("DEBUG: Total groups: " + groups);
         return groups;
-    }
-    
-    private Elements getGroupElements(Document document, int yearColumn) {
-        String selector = String.format(
-                "body > table:nth-child(5) > tbody > tr:nth-child(%d) > td:nth-child(%d) > table > tbody > tr",
-                GROUP_ROW_INDEX, yearColumn
-        );
-        return document.select(selector);
-    }
-
-    private String extractGroupInfo(Elements groupElements, int rowIndex) {
-        Elements row = groupElements.select("tr:nth-child(" + rowIndex + ")");
-        Elements groupLink = row.select("td > a");
-        String href = groupLink.attr("href");
-        String groupId = extractGroupIdFromHref(href);
-
-        String groupName = row.text().trim();
-        if (!groupName.isEmpty() && !groupId.isEmpty()) {
-            return groupName + GROUP_PREFIX + groupId;
-        }
-        return "";
     }
 
     private String extractGroupIdFromHref(String href) {
