@@ -419,12 +419,25 @@ public class MarkupSetter {
         return markup;
     }
 
+    private String formatIfDateEqTodayOrTomorrow(String text) {
+        String today = LocalDate.now().format(BotConfig.formatter);
+        if (text.equals(today)) {
+            return "Сегодня (" + text + ")";
+        }
+        String tomorrow = LocalDate.now().plusDays(1).format(BotConfig.formatter);
+        if (text.equals(tomorrow)) {
+            return "Завтра (" + text + " )";
+        }
+        return text;
+    }
+
     private InlineKeyboardMarkup getScheduledDays(String key) {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
         String groupId = key.replaceAll("ScheduleDay", "");
         List<LocalDate> availableDates = scheduleManager.getAvailableDates(groupId);
         LocalDate today = LocalDate.now();
+        LocalDate tomorrow = LocalDate.now().plusDays(1);
 
         // Обрабатываем даты парами с проверкой границ массива
         for (int i = 0; i < availableDates.size(); i++) {
@@ -433,9 +446,7 @@ public class MarkupSetter {
             String dateText = date.format(BotConfig.formatter);
 
             // Проверяем, является ли дата сегодняшним днем
-            if (date.equals(today)) {
-                dateText = "Сегодня (" + dateText + ")";
-            }
+            dateText = formatIfDateEqTodayOrTomorrow(dateText);
 
             InlineKeyboardButton button = ButtonSetter.setButton(dateText, date + "_ScheduleDate");
 
@@ -445,9 +456,7 @@ public class MarkupSetter {
                 String dateText1 = date1.format(BotConfig.formatter);
 
                 // Проверяем, является ли вторая дата сегодняшним днем
-                if (date1.equals(today)) {
-                    dateText1 = "Сегодня (" + dateText1 + ")";
-                }
+                dateText1 = formatIfDateEqTodayOrTomorrow(dateText1);
 
                 InlineKeyboardButton button1 = ButtonSetter.setButton(dateText1, date1 + "_ScheduleDate");
                 keyboard.add(ButtonSetter.setRow(button, button1));
