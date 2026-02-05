@@ -71,7 +71,16 @@ public class MarkupSetter {
             case MarkupKey.NONE -> savedBasicMarkup.put(key, getNoneMarkup());
             case MarkupKey.ONLY_BACK_TO_FILES -> savedBasicMarkup.put(key, getOnlyBackToFileButton());
             case MarkupKey.ONLY_BACK_TO_LINKS -> savedBasicMarkup.put(key, getOnlyBackToLinksButton());
+            case MarkupKey.ONLY_BACK_TO_SCHEDULE -> savedBasicMarkup.put(key, getOnlyBackToLessonButton());
         }
+    }
+
+    private InlineKeyboardMarkup getOnlyBackToLessonButton() {
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+        keyboard.add(ButtonSetter.setRow(backButtonToLessons));
+        markup.setKeyboard(keyboard);
+        return markup;
     }
 
     private InlineKeyboardMarkup getNoneMarkup() {
@@ -436,8 +445,6 @@ public class MarkupSetter {
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
         String groupId = key.replaceAll("ScheduleDay", "");
         List<LocalDate> availableDates = scheduleManager.getAvailableDates(groupId);
-        LocalDate today = LocalDate.now();
-        LocalDate tomorrow = LocalDate.now().plusDays(1);
 
         // Обрабатываем даты парами с проверкой границ массива
         for (int i = 0; i < availableDates.size(); i++) {
@@ -538,22 +545,12 @@ public class MarkupSetter {
             }
             return savedChangeableMarkup.get("Year");
         } else if (key.contains("Group")) {
-            System.out.println("-----------------------------");
-            System.out.println(key);
-            System.out.println("-----------------------------");
             if (!savedChangeableMarkup.containsKey(key)) {
                 String num = key.replace("Group", "");
-                System.out.println("-----------------------------");
                 int number = Integer.parseInt(num);
-                System.out.println(number + " - number");
-                System.out.println("-----------------------------");
                 YearsAndGroupParser yearsAndGroupParser = new YearsAndGroupParser();
-                System.out.println("-----------------------------");
                 List<String> groupList = yearsAndGroupParser.getGroups(number);
-                System.out.println(groupList + " groupList");
-                System.out.println("-----------------------------");
                 InlineKeyboardMarkup markup = setMarkupFromList(groupList, "Group");
-                System.out.println(markup);
                 savedChangeableMarkup.put("Group" + number, markup);
             }
             return savedChangeableMarkup.get(key);

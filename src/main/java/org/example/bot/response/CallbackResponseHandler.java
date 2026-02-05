@@ -213,7 +213,7 @@ public class CallbackResponseHandler {
     }
 
     public void handleLessonButton(long chatId, int messageId) {
-        EditMessageText message = createEditMessage(chatId, "Выберите дату", messageId);
+        EditMessageText message = createEditMessage(chatId, "Выберите функцию", messageId);
         message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.LESSON_MENU));
         executeEditSafely(message, "LessonButton", chatId);
     }
@@ -273,7 +273,7 @@ public class CallbackResponseHandler {
         String group = userController.getGroupId(chatId);
         String schedule = scheduleManager.getScheduleForDate(group, date);
         EditMessageText message = createEditMessage(chatId, schedule, messageId);
-        message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK));
+        message.setReplyMarkup(markupSetter.getBasicMarkup(MarkupKey.ONLY_BACK_TO_SCHEDULE));
         executeEditSafely(message, "ScheduleDate", chatId);
     }
 

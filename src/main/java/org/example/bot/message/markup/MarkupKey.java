@@ -6,5 +6,6 @@ public enum MarkupKey {
     ONLY_BACK,
     ONLY_BACK_TO_FILES,
     ONLY_BACK_TO_LINKS,
+    ONLY_BACK_TO_SCHEDULE,
     NONE
 }
